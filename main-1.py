@@ -3,30 +3,32 @@
 CRM Bot System - Single File Version
 Combines Flask web dashboard + Telegram bot + PostgreSQL
 """
-
+installed = False
 import os
 import sys
 import threading
 import time
 import logging
+import subprocess
 from datetime import datetime
 from dotenv import load_dotenv
-
+while not installed:
 # Third-party imports
-try:
-    from flask import Flask, render_template_string, request, jsonify, redirect, url_for
-    from flask_sqlalchemy import SQLAlchemy
-    from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-    from werkzeug.security import generate_password_hash, check_password_hash
-    import telebot
-    from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-    import psycopg2
-    from sqlalchemy import text
-except ImportError as e:
-    print(f"❌ Missing dependency: {e}")
-    print(
-        "Please install requirements: pip install flask flask-sqlalchemy flask-login pytelegrambotapi psycopg2-binary python-dotenv")
-    sys.exit(1)
+    try:
+        from flask import Flask, render_template_string, request, jsonify, redirect, url_for
+        from flask_sqlalchemy import SQLAlchemy
+        from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+        from werkzeug.security import generate_password_hash, check_password_hash
+        import telebot
+        from telebot.types import ReplyKeyboardMarkup, KeyboardButton
+        import psycopg2
+        from sqlalchemy import text
+        installed = True
+    except ImportError as e:
+        print(f"❌ Missing dependency: {e}")
+        print(
+            "Please install requirements: pip install flask flask-sqlalchemy flask-login pytelegrambotapi psycopg2-binary python-dotenv")
+        subprocess.call("pip install -r requirements.txt", shell=True)
 
 # Load environment variables
 load_dotenv()
