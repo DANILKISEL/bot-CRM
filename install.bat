@@ -1,1 +1,0 @@
-pip install flask flask-sqlalchemy flask-login pytelegrambotapi psycopg2-binary python-dotenv
