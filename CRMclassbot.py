@@ -1,5 +1,11 @@
 import telebot
+import logging
+import re
+from datetime import datetime
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
+
+logger = logging.getLogger("CRM CLASS BOT")
+
 class CRMTelegramBot:
     def __init__(self, app, db, telegram_bot_token, TelegramUser, Conversation, Message):
         self.app = app
@@ -19,6 +25,7 @@ class CRMTelegramBot:
         # Command handlers
         self.bot.message_handler(commands=['start', 'help'])(self.start_handler)
         self.bot.message_handler(commands=['contract'])(self.contract_handler)
+        self.bot.message_handler(commands=['pricing'])(self.pricing_handler)
 
         # Message handlers
         self.bot.message_handler(func=lambda message: self.check_contract_session(message))(
@@ -94,15 +101,10 @@ class CRMTelegramBot:
             else:
                 # For general conversations, find existing open one
                 conversation = self.Conversation.query.filter_by(
-                    telegram_user_id=telegram_user_id,
-                    status='open'
-                ).first()
-
-                if not conversation:
-                    conversation = self.Conversation.query.filter_by(
-                        telegram_user_id=telegram_user_id,
-                        status='assigned'
-                    ).first()
+                    telegram_user_id=telegram_user_id
+                ).filter(
+                    self.Conversation.status.in_(['open', 'assigned', 'contract_process'])
+                ).order_by(self.Conversation.updated_at.desc()).first()
 
                 if not conversation:
                     telegram_user = self.TelegramUser.query.get(telegram_user_id)
@@ -125,17 +127,23 @@ class CRMTelegramBot:
             self.db.session.rollback()
             return None
 
-    def save_message(self, conversation, content, sender_type="user", is_ai_response=False):
+    def save_message(self, conversation, content, sender_type="user", sender_id=None, is_ai_response=False):
         """Save message to database"""
         try:
             message = self.Message(
                 conversation_id=conversation.id,
                 sender_type=sender_type,
+                sender_id=sender_id,  # Make sure this is set
                 content=content,
                 is_ai_response=is_ai_response,
-                timestamp=datetime.utcnow()
+                timestamp=datetime.utcnow(),
+                read_by_agent=False  # Ensure messages are marked as unread
             )
             self.db.session.add(message)
+
+            # Update conversation timestamp
+            conversation.updated_at = datetime.utcnow()
+
             self.db.session.commit()
             return message
         except Exception as e:
@@ -168,6 +176,7 @@ Available commands:
 /start - Show this welcome message
 /help - Get help information  
 /contract - Start contract agreement process
+/pricing - Pricing cards
 
 We're here to help you! Just send us a message and we'll respond shortly.
             """
@@ -225,6 +234,93 @@ We're here to help you! Just send us a message and we'll respond shortly.
             self.save_message(conversation, welcome_text, sender_type="bot", is_ai_response=True)
 
             self.bot.reply_to(message, welcome_text, parse_mode='Markdown')
+
+    def pricing_handler(self, message):
+        """Handle /pricing command - show pricing cards"""
+        with self.app.app_context():
+            user = message.from_user
+
+            # Get or create Telegram user
+            telegram_user = self.get_or_create_telegram_user(
+                user_id=user.id,
+                username=user.username,
+                first_name=user.first_name,
+                last_name=user.last_name
+            )
+
+            if not telegram_user:
+                self.bot.reply_to(message, "❌ Error creating user. Please try again.")
+                return
+
+            # Get or create conversation
+            conversation = self.get_or_create_conversation(telegram_user.id, "general")
+            if conversation:
+                self.save_message(conversation, "User requested pricing information", sender_type="user")
+
+            pricing_text = """
+💼 **Прайс-лист услуг Zefir-IT**
+
+**Мелкие задачи и правки:**
+• Исправление ошибок на сайте (до 1 ч) - 500 – 1 000 ₽
+• Настройка форм обратной связи, почты (1 ч) - 800 – 1 500 ₽
+• Подключение счётчиков (1 ч) - 500 – 1 000 ₽
+• Настройка адаптивности (2–3 ч) - 1 500 – 3 000 ₽
+• Установка SSL/домена/хостинга (0,5–1 день) - 1 000 – 2 000 ₽
+
+**Создание и доработка сайтов:**
+• Доработка сайта (1–3 ч) - 1 000 – 3 000 ₽
+• Вёрстка лендинга (1–2 дня) - 3 000 – 7 000 ₽
+• Сайт «под ключ» (2–4 дня) - 5 000 – 15 000 ₽
+• Интернет-магазин (5–7 дней) - 15 000 – 30 000 ₽
+• Многостраничный сайт (1–2 недели) - 25 000 – 50 000 ₽
+• SEO-оптимизация (1–3 дня) - 2 000 – 5 000 ₽
+• Подключение CMS (1–2 дня) - 3 000 – 8 000 ₽
+• Миграция сайта (1 день) - 2 000 – 4 000 ₽
+
+**Telegram-боты:**
+• Бот с базовой логикой (1–2 дня) - 5 000 – 15 000 ₽
+• Бот для заявок/заказов (2–3 дня) - 10 000 – 20 000 ₽
+• Интеграция с Google Sheets, CRM (3–5 дней) - 15 000 – 30 000 ₽
+• Бот с авторизацией и оплатой (4–6 дней) - 20 000 – 40 000 ₽
+• Кастомная админ-панель (1 неделя) - 25 000 – 45 000 ₽
+
+**Интеграции и автоматизация:**
+• Интеграция сайта с CRM (3–5 дней) - 15 000 – 35 000 ₽
+• Интеграция с платёжными системами (3–5 дней) - 20 000 – 40 000 ₽
+• Автоматизация бизнес-процессов (5–7 дней) - 20 000 – 50 000 ₽
+• Настройка Webhook, REST API (2–4 дня) - 10 000 – 25 000 ₽
+
+**Дополнительные услуги:**
+• Настройка Excel/Google Sheets (1–2 дня) - 2 000 – 6 000 ₽
+• Разработка мини-приложений (2–5 дней) - 8 000 – 25 000 ₽
+• Подключение ChatGPT/нейросетей (3–5 дней) - 15 000 – 40 000 ₽
+• Аналитика и визуализация данных (2–4 дня) - 10 000 – 25 000 ₽
+• Поддержка проекта (ежемесячно) - от 3 000 ₽ / мес
+
+💡 *Цены являются ориентировочными. Точная стоимость рассчитывается индивидуально под каждый проект.*
+
+Для обсуждения вашего проекта или получения консультации, просто напишите нам сообщение!
+            """
+
+            # Create keyboard with additional actions
+            keyboard = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+            keyboard.add(
+                KeyboardButton("📋 Обсудить проект"),
+                KeyboardButton("💼 Начать договор"),
+                KeyboardButton("👨‍💻 Связаться с менеджером"),
+                KeyboardButton("🏠 Главное меню")
+            )
+
+            # Save pricing message to conversation
+            if conversation:
+                self.save_message(conversation, pricing_text, sender_type="bot", is_ai_response=True)
+
+            self.bot.reply_to(
+                message,
+                pricing_text,
+                parse_mode='Markdown',
+                reply_markup=keyboard
+            )
 
     def contract_message_handler(self, message):
         """Handle messages during contract process"""
@@ -305,7 +401,7 @@ We're here to help you! Just send us a message and we'll respond shortly.
                 return "I'm here to assist you! Please describe your issue and I'll connect you with a human agent if needed."
 
             elif any(word in user_message_lower for word in ['price', 'cost', 'how much']):
-                return "Our pricing varies based on your needs. I can connect you with a sales agent for detailed pricing information."
+                return "Our pricing varies based on your needs. Our pricing is available by /pricing"
 
             elif any(word in user_message_lower for word in ['thank', 'thanks']):
                 return "You're welcome! Is there anything else I can help you with?"

@@ -1,15 +1,45 @@
 from flask import render_template_string, request, jsonify, redirect, url_for, render_template
 from flask_login import login_user, logout_user, login_required, current_user
 import telebot
-import os
 from datetime import datetime
 import threading
-import logging
-import requests
-from models import User, Conversation, TelegramUser, Message
+
 from CRMclassbot import CRMTelegramBot
-from initmodule import init
-db, app, logger, login_manager, BOT_TOKEN = init()
+import sys
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from dotenv import load_dotenv
+from flask_login import LoginManager
+import logging
+import os
+
+cli = sys.modules['flask.cli']
+cli.show_server_banner = lambda *x: None
+
+# Load environment variables
+load_dotenv()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("CRM")
+
+# Initialize Flask app
+app = Flask(__name__)
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///crm_bot.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialize extensions
+db = SQLAlchemy(app)
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+# Initialize Telegram bot
+BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+if not BOT_TOKEN:
+    logger.error("TELEGRAM_BOT_TOKEN not found in environment variables!")
+    exit(1)
 
 
 def init_telegram_bot(app, db, TelegramUser, Conversation, Message):
@@ -22,100 +52,78 @@ def init_telegram_bot(app, db, TelegramUser, Conversation, Message):
     return CRMTelegramBot(app, db, bot_token, TelegramUser, Conversation, Message)
 
 
+
+#models.py ------
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+
+
+# Database Models
+
+
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
+    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    password_hash = db.Column(db.String(128), nullable=False)
+    is_agent = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    assigned_conversations = db.relationship('Conversation', backref='assigned_agent', lazy=True)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
+class TelegramUser(db.Model):
+    __tablename__ = 'telegram_users'
+    id = db.Column(db.Integer, primary_key=True)
+    telegram_id = db.Column(db.BigInteger, unique=True, nullable=False, index=True)
+    username = db.Column(db.String(80), nullable=True)
+    first_name = db.Column(db.String(80), nullable=False)
+    last_name = db.Column(db.String(80), nullable=True)
+    language_code = db.Column(db.String(10), default='en')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    conversations = db.relationship('Conversation', backref='telegram_user', lazy=True, cascade='all, delete-orphan')
+
+
+class Conversation(db.Model):
+    __tablename__ = 'conversations'
+    id = db.Column(db.Integer, primary_key=True)
+    telegram_user_id = db.Column(db.Integer, db.ForeignKey('telegram_users.id'), nullable=False, index=True)
+    status = db.Column(db.String(20), default='open', nullable=False, index=True)
+    assigned_agent_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
+    title = db.Column(db.String(200), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    closed_at = db.Column(db.DateTime, nullable=True)
+
+    messages = db.relationship('Message', backref='conversation', lazy=True, cascade='all, delete-orphan')
+
+
+class Message(db.Model):
+    __tablename__ = 'messages'
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'), nullable=False, index=True)
+    sender_type = db.Column(db.String(20), nullable=False)
+    sender_id = db.Column(db.Integer, nullable=True)
+    content = db.Column(db.Text, nullable=False)
+    message_type = db.Column(db.String(20), default='text')
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    is_ai_response = db.Column(db.Boolean, default=False)
+    read_by_agent = db.Column(db.Boolean, default=False)
+
+# end models.py ------
+
 # HTML Templates
-CHAT_HTML = '''
-{% extends "base.html" %}
-{% block content %}
-<div class="chat-container">
-    <div class="chat-header">
-        <h2>Conversation with {{ conversation.telegram_user.first_name }}</h2>
-        <div>
-            <span class="status-badge status-{{ conversation.status }}">{{ conversation.status }}</span>
-            {% if conversation.assigned_agent %}
-            <span style="margin-left: 10px;">Assigned to: {{ conversation.assigned_agent.username }}</span>
-            {% endif %}
-        </div>
-    </div>
-
-    <div class="chat-messages" id="chatMessages">
-        {% for message in messages %}
-        <div class="message {{ message.sender_type }}">
-            <div class="message-content">
-                <div class="message-sender" style="display:none;">
-                    {% if message.sender_type == 'user' %}
-                    👤 <strong>User</strong>
-                    {% elif message.sender_type == 'agent' %}
-                    👨‍💼 <strong>Agent</strong>
-                    {% else %}
-                    🤖 <strong>AI Assistant</strong>
-                    {% endif %}
-                </div>
-                <div class="message-text">{{ message.content }}</div>
-                <div class="message-meta">{{ message.timestamp.strftime('%H:%M') }}</div>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
-
-    <div class="chat-input">
-        <textarea id="messageInput" placeholder="Type your message to the user..." rows="3"></textarea>
-        <button onclick="sendMessage()" class="btn btn-primary">Send Message</button>
-    </div>
-</div>
-
-<script>
-function sendMessage() {
-    const input = document.getElementById('messageInput');
-    const content = input.value.trim();
-
-    if (content) {
-        fetch('{{ url_for("send_message") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                conversation_id: {{ conversation.id }},
-                content: content
-            })
-        }).then(response => response.json())
-          .then(data => {
-              if (data.success) {
-                  input.value = '';
-                  location.reload();
-              } else {
-                  alert('Failed to send message: ' + (data.error || 'Unknown error'));
-              }
-          })
-          .catch(error => {
-              alert('Error sending message: ' + error);
-          });
-    }
-}
-
-// Auto-scroll to bottom
-function scrollToBottom() {
-    const chatMessages = document.getElementById('chatMessages');
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Scroll to bottom on page load
-window.addEventListener('load', scrollToBottom);
-
-// Auto-refresh messages every 3 seconds
-setInterval(() => {
-    fetch('{{ url_for("get_messages", conversation_id=conversation.id) }}')
-        .then(response => response.json())
-        .then(messages => {
-            if (messages.length !== {{ messages|length }}) {
-                location.reload();
-            }
-        });
-}, 3000);
-</script>
-{% endblock %}
-'''
-
 ADMIN_DASHBOARD_HTML = '''
 {% extends "base.html" %}
 {% block content %}
@@ -649,7 +657,7 @@ def conversation(conversation_id):
         db.session.commit()
 
     messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.timestamp).all()
-    return render_template_string(CHAT_HTML, conversation=conv, messages=messages)
+    return render_template("chat.html", conversation=conv, messages=messages)
 
 
 @app.route('/send_message', methods=['POST'])
@@ -842,7 +850,8 @@ def main():
 
     """)
     logging.getLogger('werkzeug').disabled = True
-    logging.getLogger('__main__').disabled = True
+    logging.getLogger('CRM').disabled = True
+    logging.getLogger('CRM CLASS BOT').disabled = True
     print("🚀 Starting CRM Bot System...")
 
     # Initialize database

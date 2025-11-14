@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="chat-container">
+    <div class="chat-header">
+        <h2>Conversation with {{ conversation.telegram_user.first_name }}</h2>
+        <div>
+            <span class="status-badge status-{{ conversation.status }}">{{ conversation.status }}</span>
+            {% if conversation.assigned_agent %}
+            <span style="margin-left: 10px;">Assigned to: {{ conversation.assigned_agent.username }}</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="chat-messages" id="chatMessages">
+        {% for message in messages %}
+        <div class="message {{ message.sender_type }}">
+            <div class="message-content">
+                <div class="message-sender" style="display:none;">
+                    {% if message.sender_type == 'user' %}
+                    👤 <strong>User</strong>
+                    {% elif message.sender_type == 'agent' %}
+                    👨‍💼 <strong>Agent</strong>
+                    {% else %}
+                    🤖 <strong>AI Assistant</strong>
+                    {% endif %}
+                </div>
+                <div class="message-text">{{ message.content }}</div>
+                <div class="message-meta">{{ message.timestamp.strftime('%H:%M') }}</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="chat-input">
+        <textarea id="messageInput" placeholder="Type your message to the user..." rows="3"></textarea>
+        <button onclick="sendMessage()" class="btn btn-primary">Send Message</button>
+    </div>
+</div>
+
+<script>
+function sendMessage() {
+    const input = document.getElementById('messageInput');
+    const content = input.value.trim();
+
+    if (content) {
+        fetch('{{ url_for("send_message") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                conversation_id: {{ conversation.id }},
+                content: content
+            })
+        }).then(response => response.json())
+          .then(data => {
+              if (data.success) {
+                  input.value = '';
+                  location.reload();
+              } else {
+                  alert('Failed to send message: ' + (data.error || 'Unknown error'));
+              }
+          })
+          .catch(error => {
+              alert('Error sending message: ' + error);
+          });
+    }
+}
+
+// Auto-scroll to bottom
+function scrollToBottom() {
+    const chatMessages = document.getElementById('chatMessages');
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Scroll to bottom on page load
+window.addEventListener('load', scrollToBottom);
+
+// Auto-refresh messages every 3 seconds
+setInterval(() => {
+    fetch('{{ url_for("get_messages", conversation_id=conversation.id) }}')
+        .then(response => response.json())
+        .then(messages => {
+            if (messages.length !== {{ messages|length }}) {
+                location.reload();
+            }
+        });
+}, 3000);
+</script>
+{% endblock %}
