@@ -1,105 +1,15 @@
-from flask import Flask, render_template_string, request, jsonify, redirect, url_for, render_template
-from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
-from werkzeug.security import generate_password_hash, check_password_hash
+from flask import render_template_string, request, jsonify, redirect, url_for, render_template
+from flask_login import login_user, logout_user, login_required, current_user
 import telebot
 import os
 from datetime import datetime
 import threading
 import logging
-from dotenv import load_dotenv
-import sys
 import requests
+from models import User, Conversation, TelegramUser, Message
 from CRMclassbot import CRMTelegramBot
-
-cli = sys.modules['flask.cli']
-cli.show_server_banner = lambda *x: None
-
-# Load environment variables
-load_dotenv()
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-# Initialize Flask app
-app = Flask(__name__)
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your-secret-key-here')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///crm_bot.db')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-# Initialize extensions
-db = SQLAlchemy(app)
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-
-# Initialize Telegram bot
-BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
-if not BOT_TOKEN:
-    logger.error("TELEGRAM_BOT_TOKEN not found in environment variables!")
-    exit(1)
-
-
-# Database Models
-class User(UserMixin, db.Model):
-    __tablename__ = 'users'
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False, index=True)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    password_hash = db.Column(db.String(128), nullable=False)
-    is_agent = db.Column(db.Boolean, default=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    assigned_conversations = db.relationship('Conversation', backref='assigned_agent', lazy=True)
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
-
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
-
-
-class TelegramUser(db.Model):
-    __tablename__ = 'telegram_users'
-    id = db.Column(db.Integer, primary_key=True)
-    telegram_id = db.Column(db.BigInteger, unique=True, nullable=False, index=True)
-    username = db.Column(db.String(80), nullable=True)
-    first_name = db.Column(db.String(80), nullable=False)
-    last_name = db.Column(db.String(80), nullable=True)
-    language_code = db.Column(db.String(10), default='en')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    conversations = db.relationship('Conversation', backref='telegram_user', lazy=True, cascade='all, delete-orphan')
-
-
-class Conversation(db.Model):
-    __tablename__ = 'conversations'
-    id = db.Column(db.Integer, primary_key=True)
-    telegram_user_id = db.Column(db.Integer, db.ForeignKey('telegram_users.id'), nullable=False, index=True)
-    status = db.Column(db.String(20), default='open', nullable=False, index=True)
-    assigned_agent_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True, index=True)
-    title = db.Column(db.String(200), nullable=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    closed_at = db.Column(db.DateTime, nullable=True)
-
-    messages = db.relationship('Message', backref='conversation', lazy=True, cascade='all, delete-orphan')
-
-
-class Message(db.Model):
-    __tablename__ = 'messages'
-    id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.Integer, db.ForeignKey('conversations.id'), nullable=False, index=True)
-    sender_type = db.Column(db.String(20), nullable=False)
-    sender_id = db.Column(db.Integer, nullable=True)
-    content = db.Column(db.Text, nullable=False)
-    message_type = db.Column(db.String(20), default='text')
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-    is_ai_response = db.Column(db.Boolean, default=False)
-    read_by_agent = db.Column(db.Boolean, default=False)
+from initmodule import init
+db, app, logger, login_manager, BOT_TOKEN = init()
 
 
 def init_telegram_bot(app, db, TelegramUser, Conversation, Message):
