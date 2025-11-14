@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="auth-container">
+    <div class="auth-form">
+        <h2 class="form-h1">Register</h2>
+        {% if error %}
+        <div class="alert alert-error">
+            {{ error }}
+        </div>
+        {% endif %}
+        <form method="POST">
+            <div class="form-group">
+                <label class="form-group-label" for="username">Username:</label class="form-group-label">
+                <input class="form-group-input" type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label class="form-group-label" for="email">Email:</label class="form-group-label">
+                <input class="form-group-input" type="email" id="email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label class="form-group-label" for="password">Password:</label class="form-group-label">
+                <input class="form-group-input" type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+                    <input class="form-group" type="checkbox" name="is_agent" id="is_agent" value="1">
+                    <label class="form-group" for="is_agent">Register as agent</label class="form-group-label">
+            </div>
+            <button type="submit" class="btn btn-primary">Register</button>
+        </form>
+        <p class="form-text">Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+    </div>
+</div>
+{% endblock %}

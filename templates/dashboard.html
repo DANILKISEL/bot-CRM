@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard">
+    <h2>Conversations</h2>
+
+    <div class="conversations-list">
+        {% for conversation in conversations %}
+        <div class="conversation-item">
+            <div class="conversation-header">
+                <h3>Conversation #{{ conversation.id }}</h3>
+                <span class="status-badge status-{{ conversation.status }}">{{ conversation.status }}</span>
+            </div>
+            <p><strong>User:</strong> {{ conversation.telegram_user.first_name }} {{ conversation.telegram_user.last_name }}</p>
+            <p><strong>Started:</strong> {{ conversation.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p><strong>Last Message:</strong> {{ conversation.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            <a href="{{ url_for('conversation', conversation_id=conversation.id) }}" class="btn btn-secondary">Open Chat</a>
+        </div>
+        {% else %}
+        <div class="conversation-item">
+            <p>No conversations found. When users message your Telegram bot, conversations will appear here.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
