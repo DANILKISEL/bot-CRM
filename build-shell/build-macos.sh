@@ -316,7 +316,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     rm -f launcher.py
     rm -f crm_zefir_bot.py
     rm -f crm_bot.spec
-    rm -rf build
+    rm -rf build-shell
 
     print_status "Temporary files cleaned up"
 else

@@ -1,0 +1,118 @@
+name: Build macOS App
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller flask flask-sqlalchemy flask-login pytelegrambotapi python-dotenv requests pywebview
+
+    - name: Create macOS launcher
+      run: |
+        cat > macos_launcher.py << 'EOF'
+import webview
+import threading
+import time
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+def run_flask():
+    try:
+        from crm_zefir_bot import main
+        main()
+    except Exception as e:
+        print(f"Error: {e}")
+        import traceback
+        traceback.print_exc()
+
+if __name__ == '__main__':
+    print("🚀 Starting CRM Telegram Bot...")
+
+    t = threading.Thread(target=run_flask, daemon=True)
+    t.start()
+    
+    time.sleep(5)
+    
+    print("✅ Opening web interface...")
+
+    try:
+        webview.create_window(
+            'CRM Telegram Bot', 
+            'http://127.0.0.1:2000',
+            width=1200, 
+            height=800,
+            min_size=(800, 600)
+        )
+        webview.start()
+    except Exception as e:
+        print(f"Error creating window: {e}")
+EOF
+
+    - name: Copy main file
+      run: |
+        cp crm-zefir-bot.py crm_zefir_bot.py
+
+    - name: Build macOS App with PyInstaller
+      run: |
+        pyinstaller --windowed --name "CRMTelegramBot" \
+          --osx-bundle-identifier "com.yourcompany.crmbot" \
+          --add-data "crm_zefir_bot.py:." \
+          --add-data ".env:." \
+          --hidden-import=flask \
+          --hidden-import=flask_sqlalchemy \
+          --hidden-import=flask_login \
+          --hidden-import=telebot \
+          --hidden-import=python_dotenv \
+          --hidden-import=sqlalchemy \
+          --hidden-import=webview \
+          macos_launcher.py
+
+    - name: Create DMG with create-dmg
+      run: |
+        # Install create-dmg
+        brew install create-dmg
+        
+        # Create DMG
+        create-dmg \
+          --volname "CRM Telegram Bot" \
+          --volicon "dist/CRMTelegramBot.app/Contents/Resources/PythonLauncher.icns" \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --icon-size 100 \
+          --icon "CRMTelegramBot.app" 200 190 \
+          --hide-extension "CRMTelegramBot.app" \
+          --app-drop-link 600 185 \
+          "CRMTelegramBot.dmg" \
+          "dist/CRMTelegramBot.app"
+
+    - name: Upload DMG artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: CRMTelegramBot-macOS
+        path: CRMTelegramBot.dmg
+        retention-days: 30
+
+    - name: Upload App bundle (backup)
+      uses: actions/upload-artifact@v4
+      with:
+        name: CRMTelegramBot-App
+        path: dist/CRMTelegramBot.app
+        retention-days: 30
