@@ -1,6 +1,6 @@
 name: Build macOS App
 
-on: [workflow_dispatch, push]
+on: [workflow_dispatch]
 
 jobs:
   build:
@@ -16,10 +16,12 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install pyinstaller flask flask-sqlalchemy flask-login pytelegrambotapi python-dotenv requests pywebview create-dmg
+        brew install create-dmg
+        pip install pyinstaller flask flask-sqlalchemy flask-login pytelegrambotapi python-dotenv requests pywebview
 
-    - name: Create launcher
+    - name: Create launcher script
       run: |
+        # Create launcher.py with simple content
         echo "import webview, threading, time, sys, os" > launcher.py
         echo "sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))" >> launcher.py
         echo "def run_flask():" >> launcher.py
@@ -28,27 +30,19 @@ jobs:
         echo "if __name__ == '__main__':" >> launcher.py
         echo "    threading.Thread(target=run_flask, daemon=True).start()" >> launcher.py
         echo "    time.sleep(5)" >> launcher.py
-        echo "    webview.create_window('CRM Telegram Bot', 'http://127.0.0.1:2000', 1200, 800)" >> launcher.py
+        echo "    webview.create_window('CRM Bot', 'http://127.0.0.1:2000', 1200, 800)" >> launcher.py
         echo "    webview.start()" >> launcher.py
 
-    - name: Build App
+    - name: Build application
       run: |
         cp crm-zefir-bot.py crm_zefir_bot.py
-        pyinstaller --windowed --name CRMTelegramBot \
-          --add-data crm_zefir_bot.py:. \
-          --add-data .env:. \
-          launcher.py
+        pyinstaller --windowed --name CRMTelegramBot --add-data "crm_zefir_bot.py:." --add-data ".env:." launcher.py
 
-    - name: Create DMG
+    - name: Create disk image
       run: |
-        create-dmg \
-          --volname "CRM Telegram Bot" \
-          --icon "CRMTelegramBot.app" 200 190 \
-          --app-drop-link 600 185 \
-          "CRMTelegramBot.dmg" \
-          "dist/CRMTelegramBot.app"
+        create-dmg --volname "CRM Telegram Bot" --icon "CRMTelegramBot.app" 200 190 --app-drop-link 600 185 "CRMTelegramBot.dmg" "dist/CRMTelegramBot.app"
 
-    - name: Upload DMG
+    - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: CRMTelegramBot-macOS
