@@ -23,48 +23,51 @@ jobs:
         python -m pip install --upgrade pip
         pip install pyinstaller flask flask-sqlalchemy flask-login pytelegrambotapi python-dotenv requests
 
-    - name: Create launcher
+    - name: Create launcher script
       run: |
-        cat > windows_launcher.py << 'EOF'
-import sys
-import os
-import threading
-import webbrowser
-import time
+        @"
+        import sys
+        import os
+        import threading
+        import webbrowser
+        import time
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-def main():
-    print("Starting CRM Telegram Bot...")
-    print("Server: http://127.0.0.1:2000")
-    print("Login: admin / admin123")
-    print("Press Ctrl+C to stop\n")
+        def main():
+            print('Starting CRM Telegram Bot...')
+            print('Server: http://127.0.0.1:2000') 
+            print('Login: admin / admin123')
+            print('Press Ctrl+C to stop\n')
+            
+            def open_browser():
+                time.sleep(3)
+                webbrowser.open('http://127.0.0.1:2000')
+            
+            threading.Thread(target=open_browser, daemon=True).start()
+            
+            from crm_zefir_bot import main as bot_main
+            bot_main()
 
-    def open_browser():
-        time.sleep(3)
-        webbrowser.open('http://127.0.0.1:2000')
+        if __name__ == '__main__':
+            main()
+        "@ | Out-File -FilePath windows_launcher.py -Encoding utf8
 
-    threading.Thread(target=open_browser, daemon=True).start()
-    
-    from crm_zefir_bot import main as bot_main
-    bot_main()
-
-if __name__ == '__main__':
-    main()
-EOF
+    - name: Copy main file
+      run: |
+        Copy-Item crm-zefir-bot.py crm_zefir_bot.py
 
     - name: Build EXE
       run: |
-        copy crm-zefir-bot.py crm_zefir_bot.py
-        pyinstaller --onefile --console --name CRMTelegramBot ^
-          --hidden-import=flask ^
-          --hidden-import=flask_sqlalchemy ^
-          --hidden-import=flask_login ^
-          --hidden-import=telebot ^
-          --hidden-import=python_dotenv ^
-          --hidden-import=sqlalchemy ^
-          --add-data "crm_zefir_bot.py;." ^
-          --add-data ".env;." ^
+        pyinstaller --onefile --console --name CRMTelegramBot `
+          --hidden-import=flask `
+          --hidden-import=flask_sqlalchemy `
+          --hidden-import=flask_login `
+          --hidden-import=telebot `
+          --hidden-import=python_dotenv `
+          --hidden-import=sqlalchemy `
+          --add-data "crm_zefir_bot.py;." `
+          --add-data ".env;." `
           windows_launcher.py
 
     - name: Upload EXE
@@ -72,3 +75,4 @@ EOF
       with:
         name: CRMTelegramBot-Windows
         path: dist/CRMTelegramBot.exe
+        retention-days: 30
