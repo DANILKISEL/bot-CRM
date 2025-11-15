@@ -1,4 +1,4 @@
-name: Build macOS App
+name: Create macOS App
 
 on: [workflow_dispatch]
 
