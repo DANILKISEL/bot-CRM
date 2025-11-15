@@ -5,7 +5,7 @@ A comprehensive Customer Relationship Management (CRM) system built with Flask a
 [![Build Windows EXE](https://github.com/DANILKISEL/bot-CRM/actions/workflows/build-windows.yaml/badge.svg)](https://github.com/DANILKISEL/bot-CRM/actions/workflows/build-windows.yaml)
 [![Crate macOS App](https://github.com/DANILKISEL/bot-CRM/actions/workflows/build-macos.yaml/badge.svg)](https://github.com/DANILKISEL/bot-CRM/actions/workflows/build-macos.yaml)
 ![Python](https://img.shields.io/badge/python-3.8%2B-green)
-![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20-blue)
+![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-blue)
 
 ## 🌟 Features
 
