@@ -25,53 +25,59 @@ jobs:
 
     - name: Create launcher script
       run: |
-        echo "import sys" > windows_launcher.py
-        echo "import os" >> windows_launcher.py
-        echo "import threading" >> windows_launcher.py
-        echo "import webbrowser" >> windows_launcher.py
-        echo "import time" >> windows_launcher.py
-        echo. >> windows_launcher.py
-        echo "# Add current directory to Python path" >> windows_launcher.py
-        echo "sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))" >> windows_launcher.py
-        echo. >> windows_launcher.py
-        echo "def main():" >> windows_launcher.py
-        echo "    print('Starting CRM Telegram Bot...')" >> windows_launcher.py
-        echo "    print('Server: http://127.0.0.1:2000')" >> windows_launcher.py
-        echo "    print('Login: admin / admin123')" >> windows_launcher.py
-        echo "    print('Press Ctrl+C to stop')" >> windows_launcher.py
-        echo "    print()" >> windows_launcher.py
-        echo "    " >> windows_launcher.py
-        echo "    def open_browser():" >> windows_launcher.py
-        echo "        time.sleep(5)" >> windows_launcher.py
-        echo "        webbrowser.open('http://127.0.0.1:2000/system-monitor')" >> windows_launcher.py
-        echo "    " >> windows_launcher.py
-        echo "    browser_thread = threading.Thread(target=open_browser, daemon=True)" >> windows_launcher.py
-        echo "    browser_thread.start()" >> windows_launcher.py
-        echo "    " >> windows_launcher.py
-        echo "    try:" >> windows_launcher.py
-        echo "        from app import main as bot_main" >> windows_launcher.py
-        echo "        bot_main()" >> windows_launcher.py
-        echo "    except Exception as e:" >> windows_launcher.py
-        echo "        print(f'Error starting application: {e}')" >> windows_launcher.py
-        echo "        import traceback" >> windows_launcher.py
-        echo "        traceback.print_exc()" >> windows_launcher.py
-        echo "        input('Press Enter to exit...')" >> windows_launcher.py
-        echo. >> windows_launcher.py
-        echo "if __name__ == '__main__':" >> windows_launcher.py
-        echo "    main()" >> windows_launcher.py
+        @"
+        import sys
+        import os
+        import threading
+        import webbrowser
+        import time
+
+        # Add current directory to Python path
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+        def main():
+            print('Starting CRM Telegram Bot...')
+            print('Server: http://127.0.0.1:2000')
+            print('Login: admin / admin123')
+            print('Press Ctrl+C to stop')
+            print()
+
+            def open_browser():
+                time.sleep(5)
+                webbrowser.open('http://127.0.0.1:2000/system-monitor')
+
+            # Start browser in background thread
+            browser_thread = threading.Thread(target=open_browser, daemon=True)
+            browser_thread.start()
+
+            try:
+                from app import main as bot_main
+                bot_main()
+            except Exception as e:
+                print(f'Error starting application: {e}')
+                import traceback
+                traceback.print_exc()
+                input('Press Enter to exit...')
+
+        if __name__ == '__main__':
+            main()
+        "@ | Out-File -FilePath windows_launcher.py -Encoding utf8
 
     - name: Prepare distribution files
       run: |
-        mkdir dist_src
-        copy app.py dist_src\
-        copy config.py dist_src\
-        copy models.py dist_src\
-        copy CRMclassbot.py dist_src\ 2>nul
-        copy .env dist_src\ 2>nul
-        xcopy routes dist_src\routes /E /I
-        xcopy utils dist_src\utils /E /I
-        xcopy templates dist_src\templates /E /I
-        xcopy static dist_src\static /E /I
+        # Create directory structure for distribution
+        New-Item -ItemType Directory -Path "dist_src" -Force
+        Copy-Item "app.py" "dist_src/"
+        Copy-Item "config.py" "dist_src/"
+        Copy-Item "models.py" "dist_src/"
+        Copy-Item "CRMclassbot.py" "dist_src/" -ErrorAction SilentlyContinue
+        Copy-Item ".env" "dist_src/" -ErrorAction SilentlyContinue
+        
+        # Copy directories recursively
+        Copy-Item "routes" "dist_src/" -Recurse -Force
+        Copy-Item "utils" "dist_src/" -Recurse -Force
+        Copy-Item "templates" "dist_src/" -Recurse -Force
+        Copy-Item "static" "dist_src/" -Recurse -Force
 
     - name: Build EXE
       run: |
