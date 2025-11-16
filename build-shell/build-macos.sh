@@ -133,7 +133,7 @@ if __name__ == '__main__':
     try:
         webview.create_window(
             'CRM Telegram Bot',
-            'http://127.0.0.1:2000',
+            'http://127.0.0.1:2000/system-monitor',
             width=1200,
             height=800,
             min_size=(800, 600)

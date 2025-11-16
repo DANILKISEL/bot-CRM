@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <h2>Conversations with {{ telegram_user.first_name }}</h2>
+        <a href="{{ url_for('user_management') }}" class="btn btn-secondary">← Back to User Management</a>
+    </div>
+    <div class="user-info-card" style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <h3>User Information</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+            <div>
+                <strong>Name:</strong> {{ telegram_user.first_name }} {{ telegram_user.last_name or '' }}
+            </div>
+            <div>
+                <strong>Username:</strong> @{{ telegram_user.username or 'N/A' }}
+            </div>
+            <div>
+                <strong>Telegram ID:</strong> {{ telegram_user.telegram_id }}
+            </div>
+            <div>
+                <strong>Joined:</strong> {{ telegram_user.created_at.strftime('%Y-%m-%d %H:%M') }}
+            </div>
+        </div>
+    </div>
+    <div class="conversations-list">
+        {% for conversation in conversations %}
+        <div class="conversation-item">
+            <div class="conversation-header">
+                <h3>Conversation #{{ conversation.id }}</h3>
+                <span class="status-badge status-{{ conversation.status }}">{{ conversation.status }}</span>
+            </div>
+            <p><strong>Started:</strong> {{ conversation.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p><strong>Last Activity:</strong> {{ conversation.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
+            <p><strong>Messages:</strong> {{ conversation.messages|length }}</p>
+            {% if conversation.assigned_agent %}
+            <p><strong>Assigned Agent:</strong> {{ conversation.assigned_agent.username }}</p>
+            {% endif %}
+            <a href="{{ url_for('conversation', conversation_id=conversation.id) }}" class="btn btn-primary">Open Conversation</a>
+        </div>
+        {% else %}
+        <div class="conversation-item">
+            <p>No conversations found for this user.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

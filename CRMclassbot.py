@@ -92,7 +92,7 @@ class CRMTelegramBot:
 
                 conversation = self.Conversation(
                     telegram_user_id=telegram_user_id,
-                    title=f"Contract: {telegram_user.first_name}",
+                    title=f"Договор: {telegram_user.first_name}",
                     status='contract_process'
                 )
                 self.db.session.add(conversation)
@@ -114,7 +114,7 @@ class CRMTelegramBot:
 
                     conversation = self.Conversation(
                         telegram_user_id=telegram_user_id,
-                        title=f"Chat with {telegram_user.first_name}",
+                        title=f"Чат с {telegram_user.first_name}",
                         status='open'
                     )
                     self.db.session.add(conversation)
@@ -133,11 +133,11 @@ class CRMTelegramBot:
             message = self.Message(
                 conversation_id=conversation.id,
                 sender_type=sender_type,
-                sender_id=sender_id,  # Make sure this is set
+                sender_id=sender_id,
                 content=content,
                 is_ai_response=is_ai_response,
                 timestamp=datetime.utcnow(),
-                read_by_agent=False  # Ensure messages are marked as unread
+                read_by_agent=False
             )
             self.db.session.add(message)
 
@@ -151,7 +151,6 @@ class CRMTelegramBot:
             self.db.session.rollback()
             return None
 
-    # Apply decorator to each handler method individually
     def start_handler(self, message):
         """Handle /start and /help commands"""
         with self.app.app_context():
@@ -166,19 +165,19 @@ class CRMTelegramBot:
             )
 
             if not telegram_user:
-                self.bot.reply_to(message, "❌ Error creating user. Please try again.")
+                self.bot.reply_to(message, "❌ Ошибка создания пользователя. Пожалуйста, попробуйте снова.")
                 return
 
             welcome_text = """
-🤖 Welcome to CRM Support Bot!
+🤖 Добро пожаловать в CRM Support Bot!
 
-Available commands:
-/start - Show this welcome message
-/help - Get help information  
-/contract - Start contract agreement process
-/pricing - Pricing cards
+Доступные команды:
+/start - Показать это приветственное сообщение
+/help - Получить информацию о помощи
+/contract - Начать процесс заключения договора
+/pricing - Показать прайс-лист
 
-We're here to help you! Just send us a message and we'll respond shortly.
+Мы здесь, чтобы помочь вам! Просто отправьте нам сообщение, и мы ответим в ближайшее время.
             """
 
             # Create general conversation if doesn't exist
@@ -202,13 +201,13 @@ We're here to help you! Just send us a message and we'll respond shortly.
             )
 
             if not telegram_user:
-                self.bot.reply_to(message, "❌ Error creating user. Please try again.")
+                self.bot.reply_to(message, "❌ Ошибка создания пользователя. Пожалуйста, попробуйте снова.")
                 return
 
             # Create contract conversation
             conversation = self.get_or_create_conversation(telegram_user.id, "contract")
             if not conversation:
-                self.bot.reply_to(message, "❌ Error creating contract process. Please try again.")
+                self.bot.reply_to(message, "❌ Ошибка создания процесса договора. Пожалуйста, попробуйте снова.")
                 return
 
             # Initialize user session for contract process
@@ -220,12 +219,12 @@ We're here to help you! Just send us a message and we'll respond shortly.
             }
 
             # Save start message
-            self.save_message(conversation, "User started contract process")
+            self.save_message(conversation, "Пользователь начал процесс договора")
 
             welcome_text = """
 🤝 **Добро пожаловать!**
 
-Вы начинаете процесс заключения соглашения с нашей командой Zeffr.
+Вы начинаете процесс заключения соглашения с нашей командой Zefir.
 
 Пожалуйста, введите ваше ФИО полностью:
             """
@@ -249,13 +248,13 @@ We're here to help you! Just send us a message and we'll respond shortly.
             )
 
             if not telegram_user:
-                self.bot.reply_to(message, "❌ Error creating user. Please try again.")
+                self.bot.reply_to(message, "❌ Ошибка создания пользователя. Пожалуйста, попробуйте снова.")
                 return
 
             # Get or create conversation
             conversation = self.get_or_create_conversation(telegram_user.id, "general")
             if conversation:
-                self.save_message(conversation, "User requested pricing information", sender_type="user")
+                self.save_message(conversation, "Пользователь запросил информацию о ценах", sender_type="user")
 
             pricing_text = """
 💼 **Прайс-лист услуг Zefir-IT**
@@ -302,24 +301,15 @@ We're here to help you! Just send us a message and we'll respond shortly.
 Для обсуждения вашего проекта или получения консультации, просто напишите нам сообщение!
             """
 
-            # Create keyboard with additional actions
-            keyboard = ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-            keyboard.add(
-                KeyboardButton("📋 Обсудить проект"),
-                KeyboardButton("💼 Начать договор"),
-                KeyboardButton("👨‍💻 Связаться с менеджером"),
-                KeyboardButton("🏠 Главное меню")
-            )
-
             # Save pricing message to conversation
             if conversation:
                 self.save_message(conversation, pricing_text, sender_type="bot", is_ai_response=True)
 
+            # Send without keyboard (remove buttons)
             self.bot.reply_to(
                 message,
                 pricing_text,
-                parse_mode='Markdown',
-                reply_markup=keyboard
+                parse_mode='Markdown'
             )
 
     def contract_message_handler(self, message):
@@ -329,7 +319,7 @@ We're here to help you! Just send us a message and we'll respond shortly.
             user_message = message.text
 
             if user.id not in self.user_sessions:
-                self.bot.reply_to(message, "Please start contract process with /contract")
+                self.bot.reply_to(message, "Пожалуйста, начните процесс договора с /contract")
                 return
 
             session = self.user_sessions[user.id]
@@ -337,7 +327,7 @@ We're here to help you! Just send us a message and we'll respond shortly.
 
             conversation = self.Conversation.query.get(conversation_id)
             if not conversation:
-                self.bot.reply_to(message, "❌ Session error. Please start over with /contract")
+                self.bot.reply_to(message, "❌ Ошибка сессии. Пожалуйста, начните заново с /contract")
                 return
 
             # Save user message
@@ -364,13 +354,13 @@ We're here to help you! Just send us a message and we'll respond shortly.
             )
 
             if not telegram_user:
-                self.bot.reply_to(message, "❌ Error processing message. Please try /start")
+                self.bot.reply_to(message, "❌ Ошибка обработки сообщения. Пожалуйста, попробуйте /start")
                 return
 
             # Get or create general conversation
             conversation = self.get_or_create_conversation(telegram_user.id, "general")
             if not conversation:
-                self.bot.reply_to(message, "❌ Error creating conversation. Please try again.")
+                self.bot.reply_to(message, "❌ Ошибка создания диалога. Пожалуйста, попробуйте снова.")
                 return
 
             # Save user message
@@ -394,33 +384,33 @@ We're here to help you! Just send us a message and we'll respond shortly.
         try:
             user_message_lower = user_message.lower()
 
-            if any(word in user_message_lower for word in ['hello', 'hi', 'hey']):
-                return "Hello! I'm an AI assistant. How can I help you today?"
+            if any(word in user_message_lower for word in ['привет', 'здравствуй', 'добрый', 'hello', 'hi', 'hey']):
+                return "Привет! Я AI-ассистент. Чем могу помочь вам сегодня?"
 
-            elif 'help' in user_message_lower:
-                return "I'm here to assist you! Please describe your issue and I'll connect you with a human agent if needed."
+            elif any(word in user_message_lower for word in ['помощь', 'help', 'помоги']):
+                return "Я здесь, чтобы помочь вам! Опишите вашу проблему, и я свяжу вас с человеческим агентом, если это потребуется."
 
-            elif any(word in user_message_lower for word in ['price', 'cost', 'how much']):
-                return "Our pricing varies based on your needs. Our pricing is available by /pricing"
+            elif any(word in user_message_lower for word in ['цена', 'стоимость', 'сколько стоит', 'прайс']):
+                return "Наши цены варьируются в зависимости от ваших потребностей. Полный прайс-лист доступен по команде /pricing"
 
-            elif any(word in user_message_lower for word in ['thank', 'thanks']):
-                return "You're welcome! Is there anything else I can help you with?"
+            elif any(word in user_message_lower for word in ['спасибо', 'благодарю']):
+                return "Пожалуйста! Могу ли я помочь вам с чем-то ещё?"
 
-            elif any(word in user_message_lower for word in ['bye', 'goodbye']):
-                return "Goodbye! Feel free to reach out if you need more assistance."
+            elif any(word in user_message_lower for word in ['пока', 'до свидания']):
+                return "До свидания! Не стесняйтесь обращаться, если вам потребуется дополнительная помощь."
 
             else:
-                return "Thank you for your message. I've forwarded it to our support team. An agent will respond shortly. In the meantime, is there any other information I can provide?"
+                return "Спасибо за ваше сообщение. Я переправил его нашей службе поддержки. Агент ответит вам в ближайшее время. Могу ли я предоставить какую-либо другую информацию?"
 
         except Exception as e:
             logger.error(f"Error generating AI response: {e}")
-            return "I understand you're looking for assistance. Our team will get back to you shortly."
+            return "Я понимаю, что вы ищете помощь. Наша команда свяжется с вами в ближайшее время."
 
     def notify_agents(self, conversation_id, message, tg_user):
         """Notify agents about new message"""
         try:
             logger.info(f"New message from {tg_user.first_name}: {message}")
-            print(f"🔔 Conversation #{conversation_id}: {tg_user.first_name} - {message}")
+            print(f"🔔 Диалог #{conversation_id}: {tg_user.first_name} - {message}")
         except Exception as e:
             logger.error(f"Error notifying agents: {e}")
 
@@ -436,7 +426,7 @@ We're here to help you! Just send us a message and we'll respond shortly.
             session['full_name'] = full_name
             session['step'] = 'waiting_passport'
 
-            conversation.title = f"Contract: {full_name}"
+            conversation.title = f"Договор: {full_name}"
             self.db.session.commit()
 
             next_step_text = """
@@ -469,10 +459,10 @@ We're here to help you! Just send us a message and we'll respond shortly.
 Перед началом работы ознакомьтесь с нашей публичной офертой:
 
 **Договор:**  
-[https://zeffr-it.ru/contract.html](https://zeffr-it.ru/contract.html)  
+[https://zefir-it.ru/contract.html](https://zefir-it.ru/contract.html)  
 
 **Соглашение об обработке данных:**  
-[https://zeffr-it.ru/privacy.html](https://zeffr-it.ru/privacy.html)  
+[https://zefir-it.ru/privacy.html](https://zefir-it.ru/privacy.html)  
 
 Нажимая кнопку ниже, вы подтверждаете согласие с условиями.
             """
@@ -577,8 +567,8 @@ We're here to help you! Just send us a message and we'll respond shortly.
 
     def run(self):
         """Run the single bot"""
-        logger.info("CRM Telegram Bot is starting...")
+        logger.info("CRM Telegram Bot запускается...")
         try:
             self.bot.infinity_polling()
         except Exception as e:
-            logger.error(f"Error in CRM bot: {e}")
+            logger.error(f"Ошибка в CRM боте: {e}")

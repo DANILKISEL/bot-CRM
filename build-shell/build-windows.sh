@@ -37,7 +37,7 @@ def main():
 
     def open_browser():
         time.sleep(3)
-        webbrowser.open('http://127.0.0.1:2000')
+        webbrowser.open('http://127.0.0.1:2000/system-monitor')
 
     threading.Thread(target=open_browser, daemon=True).start()
 

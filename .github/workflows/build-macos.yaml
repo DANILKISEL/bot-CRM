@@ -33,7 +33,7 @@ jobs:
         echo "if __name__ == '__main__':" >> launcher.py
         echo "    threading.Thread(target=run_flask, daemon=True).start()" >> launcher.py
         echo "    time.sleep(5)" >> launcher.py
-        echo "    webview.create_window('CRM Bot', 'http://127.0.0.1:2000', 1200, 800)" >> launcher.py
+        echo "    webview.create_window('CRM Bot', 'http://127.0.0.1:2000/system-monitor', 1200, 800)" >> launcher.py
         echo "    webview.start()" >> launcher.py
 
     - name: Build application

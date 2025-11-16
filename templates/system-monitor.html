@@ -1,0 +1,136 @@
+
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard">
+    <h2>System Monitor</h2>
+    <div class="stats-grid" id="status-cards">
+        <div class="stat-card">
+            <span class="stat-number" id="bot-status">Checking...</span>
+            <span class="stat-label">Bot Status</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number" id="system-uptime">-</span>
+            <span class="stat-label">System Uptime</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number" id="active-users">-</span>
+            <span class="stat-label">Active Users</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number" id="total-messages">-</span>
+            <span class="stat-label">Total Messages</span>
+        </div>
+    </div>
+    <div class="control-panel" style="background: white; padding: 1.5rem; border-radius: 8px; margin: 2rem 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <h3>System Controls</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+            <button onclick="restartSystem()" class="btn btn-warning" style="display:none;">🔄 Restart System</button>
+            <button onclick="shutdownSystem()" class="btn btn-danger">⏹️ Shutdown</button>
+            <button onclick="refreshStatus()" class="btn btn-secondary">🔄 Refresh Status</button>
+            <a href="{{ url_for('api_environment') }}" class="btn btn-primary style="display:none;">⚙️ Environment Settings</a>
+        </div>
+    </div>
+    <div class="env-info" style="background: white; padding: 1.5rem; border-radius: 8px; margin: 2rem 0; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <h3>Environment Information</h3>
+        <div id="env-info">
+            Loading environment info...
+        </div>
+    </div>
+    <div class="recent-activity" style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <h3>Recent Activity</h3>
+        <div id="recent-activity">
+            Loading recent activity...
+        </div>
+    </div>
+</div>
+<script>
+let refreshInterval;
+function loadStatus() {
+    fetch('/api/status')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                document.getElementById('bot-status').textContent = 'Error';
+                return;
+            }
+            document.getElementById('bot-status').textContent = data.system.bot_status;
+            document.getElementById('system-uptime').textContent = data.system.uptime;
+            document.getElementById('active-users').textContent = data.statistics.total_users;
+            document.getElementById('total-messages').textContent = data.statistics.total_messages;
+            const envInfo = data.environment;
+            document.getElementById('env-info').innerHTML = `
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 0.5rem 1rem; align-items: center;">
+                    <strong>Database:</strong> <span>${envInfo.database_url}</span>
+                    <strong>Flask Environment:</strong> <span>${envInfo.flask_env}</span>
+                    <strong>Bot Token:</strong> <span>${envInfo.bot_token_set ? '✓ Set' : '✗ Missing'}</span>
+                </div>
+            `;
+            const recent = data.recent_activity;
+            let activityHtml = '<h4>Recent Messages</h4>';
+            if (recent.recent_messages.length > 0) {
+                recent.recent_messages.forEach(msg => {
+                    activityHtml += `
+                        <div style="border-left: 3px solid #007bff; padding-left: 1rem; margin: 0.5rem 0;">
+                            <small>${new Date(msg.timestamp).toLocaleString()}</small>
+                            <p>${msg.content}</p>
+                            <small>Conversation #${msg.conversation_id}</small>
+                        </div>
+                    `;
+                });
+            } else {
+                activityHtml += '<p>No recent messages</p>';
+            }
+            document.getElementById('recent-activity').innerHTML = activityHtml;
+        })
+        .catch(error => {
+            console.error('Error loading status:', error);
+            document.getElementById('bot-status').textContent = 'Error';
+        });
+}
+function refreshStatus() {
+    loadStatus();
+}
+function restartSystem() {
+    if (confirm('Are you sure you want to restart the system? This will interrupt any ongoing conversations.')) {
+        fetch('/api/restart', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('System restart initiated. Please wait...');
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+    }
+}
+function shutdownSystem() {
+    if (confirm('Are you sure you want to shutdown the system? This will stop the bot and web interface.')) {
+        fetch('/api/shutdown', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('System shutdown initiated.');
+                } else {
+                    alert('Error: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error);
+            });
+    }
+}
+document.addEventListener('DOMContentLoaded', function() {
+    loadStatus();
+    refreshInterval = setInterval(loadStatus, 30000);
+});
+window.addEventListener('beforeunload', function() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+});
+</script>
+{% endblock %}
+'''

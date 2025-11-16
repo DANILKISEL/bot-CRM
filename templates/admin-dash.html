@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="dashboard">
+    <h2>Admin Dashboard</h2>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span class="stat-number">{{ total_users }}</span>
+            <span class="stat-label">Total Telegram Users</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ total_agents }}</span>
+            <span class="stat-label">Agents</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ open_conversations }}</span>
+            <span class="stat-label">Open Conversations</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-number">{{ total_messages }}</span>
+            <span class="stat-label">Total Messages</span>
+        </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin: 2rem 0;">
+        <a href="{{ url_for('user_management') }}" class="btn btn-primary" style="text-align: center; padding: 1.5rem;">
+            👥 User Management
+        </a>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary" style="text-align: center; padding: 1.5rem;">
+            💬 Conversation Dashboard
+        </a>
+        <a href="{{ url_for('system_monitor') }}" class="btn btn-info" style="text-align: center; padding: 1.5rem;">
+            📊 System Monitor
+        </a>
+    </div>
+    <div class="recent-activity" style="background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+        <h3>Recent User Registrations</h3>
+        <div class="users-grid" style="margin-top: 1rem;">
+            {% for user in recent_users %}
+            <div class="user-card">
+                <div class="user-info">
+                    <h4>{{ user.first_name }} {{ user.last_name or '' }}</h4>
+                    <p><strong>Username:</strong> @{{ user.username or 'N/A' }}</p>
+                    <p><strong>Joined:</strong> {{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+                </div>
+            </div>
+            {% else %}
+            <p>No recent users.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
