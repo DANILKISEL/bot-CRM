@@ -62,47 +62,16 @@ jobs:
 
     - name: Build application
       run: |
-        # Copy all necessary files to dist directory structure
         mkdir -p dist_src
         cp -r app.py config.py models.py routes utils templates static dist_src/
         cp .env dist_src/ 2>/dev/null || true
         cp CRMclassbot.py dist_src/ 2>/dev/null || true
         
-        # Build with PyInstaller
-        pyinstaller --windowed \
-          --name CRMTelegramBot \
-          --add-data "dist_src/app.py:." \
-          --add-data "dist_src/config.py:." \
-          --add-data "dist_src/models.py:." \
-          --add-data "dist_src/routes:routes" \
-          --add-data "dist_src/utils:utils" \
-          --add-data "dist_src/templates:templates" \
-          --add-data "dist_src/static:static" \
-          --add-data "dist_src/.env:." \
-          --add-data "dist_src/CRMclassbot.py:." \
-          --hidden-import=flask \
-          --hidden-import=flask_sqlalchemy \
-          --hidden-import=flask_login \
-          --hidden-import=telebot \
-          --hidden-import=python_dotenv \
-          --hidden-import=sqlalchemy \
-          --hidden-import=engineio \
-          --hidden-import=jinja2 \
-          --collect-all=werkzeug \
-          launcher.py
+        pyinstaller --windowed --name CRMTelegramBot --add-data "dist_src/app.py:." --add-data "dist_src/config.py:." --add-data "dist_src/models.py:." --add-data "dist_src/routes:routes" --add-data "dist_src/utils:utils" --add-data "dist_src/templates:templates" --add-data "dist_src/static:static" --add-data "dist_src/.env:." --add-data "dist_src/CRMclassbot.py:." --hidden-import=flask --hidden-import=flask_sqlalchemy --hidden-import=flask_login --hidden-import=telebot --hidden-import=python_dotenv --hidden-import=sqlalchemy --hidden-import=engineio --hidden-import=jinja2 --collect-all=werkzeug launcher.py
 
     - name: Create disk image
       run: |
-        create-dmg \
-          --volname "CRM Telegram Bot" \
-          --window-pos 200 120 \
-          --window-size 800 400 \
-          --icon-size 100 \
-          --icon "CRMTelegramBot.app" 200 190 \
-          --hide-extension "CRMTelegramBot.app" \
-          --app-drop-link 600 185 \
-          "CRMTelegramBot.dmg" \
-          "dist/CRMTelegramBot.app"
+        create-dmg --volname "CRM Telegram Bot" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "CRMTelegramBot.app" 200 190 --hide-extension "CRMTelegramBot.app" --app-drop-link 600 185 "CRMTelegramBot.dmg" "dist/CRMTelegramBot.app"
 
     - name: Create Release and Upload DMG
       if: startsWith(github.ref, 'refs/tags/v')
