@@ -41,5 +41,11 @@ class Config:
 
 def setup_logging():
     """Configure application logging"""
-    logging.config.dictConfig(Config.LOGGING_CONFIG)
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        filename='app.log',
+        filemode='a',
+        encoding='utf-8'
+    )
     return logging.getLogger("CRM")
