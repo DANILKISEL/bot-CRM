@@ -1,5 +1,11 @@
 {% extends "base.html" %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat-style.css') }}">
+{% endblock %}
+
 {% block content %}
+
 <div class="chat-container">
     <div class="chat-header">
         <h2>Conversation with {{ conversation.telegram_user.first_name }}</h2>
@@ -11,24 +17,26 @@
         </div>
     </div>
 
-    <div class="chat-messages" id="chatMessages">
-        {% for message in messages %}
-        <div class="message {{ message.sender_type }}">
-            <div class="message-content">
-                <div class="message-sender" style="display:none;">
-                    {% if message.sender_type == 'user' %}
-                    👤 <strong>User</strong>
-                    {% elif message.sender_type == 'agent' %}
-                    👨‍💼 <strong>Agent</strong>
-                    {% else %}
-                    🤖 <strong>AI Assistant</strong>
-                    {% endif %}
+    <div class="messages-container">
+        <div class="chat-messages" id="chatMessages">
+            {% for message in messages %}
+            <div class="message {{ message.sender_type }}">
+                <div class="message-content">
+                    <div class="message-sender">
+                        {% if message.sender_type == 'user' %}
+                        👤 <strong>User</strong>
+                        {% elif message.sender_type == 'agent' %}
+                        👨‍💼 <strong>Agent</strong>
+                        {% else %}
+                        🤖 <strong>AI Assistant</strong>
+                        {% endif %}
+                    </div>
+                    <div class="message-text">{{ message.content }}</div>
+                    <div class="message-meta">{{ message.timestamp.strftime('%H:%M') }}</div>
                 </div>
-                <div class="message-text">{{ message.content }}</div>
-                <div class="message-meta">{{ message.timestamp.strftime('%H:%M') }}</div>
             </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
 
     <div class="chat-input">
@@ -36,55 +44,18 @@
         <button onclick="sendMessage()" class="btn btn-primary">Send Message</button>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/chat.js') }}"></script>
 <script>
-function sendMessage() {
-    const input = document.getElementById('messageInput');
-    const content = input.value.trim();
-
-    if (content) {
-        fetch('{{ url_for("send_message") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                conversation_id: {{ conversation.id }},
-                content: content
-            })
-        }).then(response => response.json())
-          .then(data => {
-              if (data.success) {
-                  input.value = '';
-                  location.reload();
-              } else {
-                  alert('Failed to send message: ' + (data.error || 'Unknown error'));
-              }
-          })
-          .catch(error => {
-              alert('Error sending message: ' + error);
-          });
-    }
-}
-
-// Auto-scroll to bottom
-function scrollToBottom() {
-    const chatMessages = document.getElementById('chatMessages');
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Scroll to bottom on page load
-window.addEventListener('load', scrollToBottom);
-
-// Auto-refresh messages every 3 seconds
-setInterval(() => {
-    fetch('{{ url_for("get_messages", conversation_id=conversation.id) }}')
-        .then(response => response.json())
-        .then(messages => {
-            if (messages.length !== {{ messages|length }}) {
-                location.reload();
-            }
-        });
-}, 3000);
+    // Initialize chat with conversation data
+    const conversationData = {
+        id: {{ conversation.id }},
+        getMessagesUrl: '{{ url_for("get_messages", conversation_id=conversation.id) }}',
+        sendMessageUrl: '{{ url_for("send_message") }}',
+        initialMessagesCount: {{ messages|length }}
+    };
+    initializeChat(conversationData);
 </script>
 {% endblock %}

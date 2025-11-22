@@ -22,7 +22,9 @@ class Config:
         'PLATFORM_ADMIN': 4
     }
 
-    # Logging configuration
+    import sys
+
+    # Logging configuration with optional console output
     LOGGING_CONFIG = {
         'version': 1,
         'formatters': {
@@ -39,15 +41,15 @@ class Config:
             },
             'console': {
                 'class': 'logging.StreamHandler',
-                'formatter': 'default'
+                'formatter': 'default',
+                'stream': sys.stdout
             }
         },
         'root': {
             'level': 'INFO',
-            'handlers': ['file', 'console']
+            'handlers': ['file', 'console'] if sys.stdout.isatty() else ['file']
         }
     }
-
 
 def setup_logging():
     """Configure application logging"""
