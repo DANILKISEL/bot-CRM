@@ -1,0 +1,495 @@
+{% extends "base.html" %}
+
+{% block title %}User Management - CRM Bot{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <!-- Header -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark">
+            <h1 class="form-h1 mb-0">
+                <i class="fas fa-users me-2"></i>User Management
+            </h1>
+            <p class="text-light mb-0 mt-2">Manage system users and their roles</p>
+        </div>
+    </div>
+
+    <!-- Tabs Navigation -->
+    <div class="card mb-4">
+        <div class="card-body p-0">
+            <ul class="nav nav-tabs" id="userManagementTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="staff-tab" data-bs-toggle="tab" data-bs-target="#staff" type="button" role="tab" aria-controls="staff" aria-selected="true">
+                        <i class="fas fa-user-shield me-2"></i>
+                        Staff Users
+                        <span class="badge bg-primary ms-2">{{ staff_users|length }}</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="telegram-tab" data-bs-toggle="tab" data-bs-target="#telegram" type="button" role="tab" aria-controls="telegram" aria-selected="false">
+                        <i class="fas fa-robot me-2"></i>
+                        Telegram Users
+                        <span class="badge bg-primary ms-2">{{ telegram_users.total }}</span>
+                    </button>
+                </li>
+                {% if current_user.has_role('PLATFORM_ADMIN') %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="add-user-tab" data-bs-toggle="tab" data-bs-target="#add-user" type="button" role="tab" aria-controls="add-user" aria-selected="false">
+                        <i class="fas fa-user-plus me-2"></i>
+                        Add User
+                    </button>
+                </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="userManagementTabsContent">
+        <!-- Staff Users Tab -->
+        <div class="tab-pane fade show active" id="staff" role="tabpanel" aria-labelledby="staff-tab">
+            <!-- Add User Form (Platform Admin only) -->
+            {% if current_user.has_role('PLATFORM_ADMIN') %}
+            <div class="card mb-4">
+                <div class="card-header bg-info">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="fas fa-user-plus me-2"></i>Add New User
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="addUserForm" class="row g-3">
+                        <div class="col-12 col-md-3">
+                            <label for="username" class="form-group-label">Username</label>
+                            <input type="text" class="form-group-input" id="username" name="username" required>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label for="email" class="form-group-label">Email</label>
+                            <input type="email" class="form-group-input" id="email" name="email" required>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label for="password" class="form-group-label">Password</label>
+                            <input type="password" class="form-group-input" id="password" name="password" required>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label for="role" class="form-group-label">Role</label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="AGENT">Agent</option>
+                                <option value="MANAGER">Manager</option>
+                                <option value="SYSTEM_ADMIN">System Admin</option>
+                                <option value="PLATFORM_ADMIN">Platform Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-plus me-2"></i>
+                                Add User
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Staff Users Table -->
+            <div class="card">
+                <div class="card-header bg-dark">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="fas fa-user-shield me-2"></i>Staff Users
+                        <span class="badge bg-primary ms-2">{{ staff_users|length }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Username</th>
+                                    <th class="d-none d-md-table-cell">Email</th>
+                                    <th>Role</th>
+                                    <th class="d-none d-md-table-cell">Created</th>
+                                    <th>Conv.</th>
+                                    {% if current_user.has_role('PLATFORM_ADMIN') %}
+                                    <th>Actions</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in staff_users %}
+                                <tr class="conversation-item">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="user-avatar me-3">
+                                                {{ user.username[0]|upper }}
+                                            </div>
+                                            <div>
+                                                <div class="fw-semibold">{{ user.username }}</div>
+                                                <small class="text-success d-md-none">{{ user.email }}</small>
+                                                {% if user.id == current_user.id %}
+                                                <small class="text-success">(You)</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="d-none d-md-table-cell">{{ user.email }}</td>
+                                    <td>
+                                        <span class="status-badge {% if user.role_level >= ROLES['PLATFORM_ADMIN'] %}status-open
+                                                          {% elif user.role_level >= ROLES['SYSTEM_ADMIN'] %}status-assigned
+                                                          {% elif user.role_level >= ROLES['MANAGER'] %}status-contract_process
+                                                          {% else %}status-closed{% endif %}">
+                                            {{ user.get_role_name() }}
+                                        </span>
+                                    </td>
+                                    <td class="d-none d-md-table-cell">
+                                        <small>{{ user.created_at.strftime('%Y-%m-%d') }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ user.assigned_conversations|length }}</span>
+                                    </td>
+                                    {% if current_user.has_role('PLATFORM_ADMIN') %}
+                                    <td>
+                                        {% if user.id != current_user.id %}
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-warning btn-sm"
+                                                    onclick="openRoleModal({{ user.id }}, '{{ user.username }}', {{ user.role_level }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline-danger btn-sm"
+                                                    onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                        {% else %}
+                                        <small class="text-muted">Current user</small>
+                                        {% endif %}
+                                    </td>
+                                    {% endif %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Telegram Users Tab -->
+        <div class="tab-pane fade" id="telegram" role="tabpanel" aria-labelledby="telegram-tab">
+            <div class="card">
+                <div class="card-header bg-dark">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="fas fa-robot me-2"></i>Telegram Users
+                        <span class="badge bg-primary ms-2">{{ telegram_users.total }}</span>
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>User</th>
+                                    <th class="d-none d-md-table-cell">Telegram ID</th>
+                                    <th>Username</th>
+                                    <th class="d-none d-md-table-cell">Joined</th>
+                                    <th>Conv.</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in telegram_users.items %}
+                                <tr class="conversation-item">
+                                    <td>
+                                        <div class="fw-semibold">{{ user.first_name }} {{ user.last_name or '' }}</div>
+                                        <small class="text-muted d-md-none">ID: {{ user.telegram_id }}</small>
+                                    </td>
+                                    <td class="d-none d-md-table-cell">
+                                        <code>{{ user.telegram_id }}</code>
+                                    </td>
+                                    <td>
+                                        {% if user.username %}
+                                        <span class="text-muted">@{{ user.username }}</span>
+                                        {% else %}
+                                        <span class="text-muted">No username</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="d-none d-md-table-cell">
+                                        <small>{{ user.created_at.strftime('%Y-%m-%d') }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ user.conversations|length }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{{ url_for('user_conversations', user_id=user.id) }}"
+                                           class="btn btn-outline-primary btn-sm">
+                                            <i class="fas fa-comments me-2"></i>
+                                            Conversations
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% if telegram_users.pages > 1 %}
+                <div class="card-footer">
+                    <nav class="pagination">
+                        {% if telegram_users.has_prev %}
+                        <a class="page-link" href="{{ url_for('user_management', page=telegram_users.prev_num) }}#telegram">
+                            <i class="fas fa-chevron-left me-2"></i>
+                            Previous
+                        </a>
+                        {% endif %}
+
+                        {% for page_num in telegram_users.iter_pages(left_edge=1, left_current=1, right_current=1, right_edge=1) %}
+                            {% if page_num %}
+                                <a class="page-link {% if page_num == telegram_users.page %}active{% endif %}"
+                                   href="{{ url_for('user_management', page=page_num) }}#telegram">
+                                    {{ page_num }}
+                                </a>
+                            {% else %}
+                                <span class="page-link disabled">...</span>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if telegram_users.has_next %}
+                        <a class="page-link" href="{{ url_for('user_management', page=telegram_users.next_num) }}#telegram">
+                            Next
+                            <i class="fas fa-chevron-right ms-2"></i>
+                        </a>
+                        {% endif %}
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Add User Tab (Platform Admin only) -->
+        {% if current_user.has_role('PLATFORM_ADMIN') %}
+        <div class="tab-pane fade" id="add-user" role="tabpanel" aria-labelledby="add-user-tab">
+            <div class="card">
+                <div class="card-header bg-info">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="fas fa-user-plus me-2"></i>Add New User
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="addUserFormTab" class="row g-3">
+                        <div class="col-12 col-md-3">
+                            <label for="usernameTab" class="form-group-label">Username</label>
+                            <input type="text" class="form-group-input" id="usernameTab" name="username" required>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label for="emailTab" class="form-group-label">Email</label>
+                            <input type="email" class="form-group-input" id="emailTab" name="email" required>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label for="passwordTab" class="form-group-label">Password</label>
+                            <input type="password" class="form-group-input" id="passwordTab" name="password" required>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <label for="roleTab" class="form-group-label">Role</label>
+                            <select class="form-select" id="roleTab" name="role" required>
+                                <option value="AGENT">Agent</option>
+                                <option value="MANAGER">Manager</option>
+                                <option value="SYSTEM_ADMIN">System Admin</option>
+                                <option value="PLATFORM_ADMIN">Platform Admin</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-plus me-2"></i>
+                                Add User
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Role Update Modal -->
+<div class="modal fade" id="roleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Update User Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Update role for user: <strong id="modalUserName"></strong></p>
+                <select class="form-select" id="newRole">
+                    <option value="AGENT">Agent</option>
+                    <option value="MANAGER">Manager</option>
+                    <option value="SYSTEM_ADMIN">System Admin</option>
+                    <option value="PLATFORM_ADMIN">Platform Admin</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="updateUserRole()">Update Role</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentUserId = null;
+
+    // Initialize tabs
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle tab clicks for URL hash
+        const tabs = document.querySelectorAll('[data-bs-toggle="tab"]');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const target = this.getAttribute('data-bs-target');
+                history.replaceState(null, null, target);
+            });
+        });
+
+        // Check URL hash on load
+        if (window.location.hash) {
+            const hash = window.location.hash;
+            const tab = document.querySelector(`[data-bs-target="${hash}"]`);
+            if (tab) {
+                bootstrap.Tab.getOrCreateInstance(tab).show();
+            }
+        }
+    });
+
+    // Add User Form (Staff Tab)
+    document.getElementById('addUserForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        await handleAddUser(this);
+    });
+
+    // Add User Form (Add User Tab)
+    if (document.getElementById('addUserFormTab')) {
+        document.getElementById('addUserFormTab').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await handleAddUser(this);
+        });
+    }
+
+    async function handleAddUser(form) {
+        const formData = new FormData(form);
+        const data = {
+            username: formData.get('username'),
+            email: formData.get('email'),
+            password: formData.get('password'),
+            role: formData.get('role')
+        };
+
+        try {
+            const response = await fetch('/add-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('User added successfully!');
+                form.reset();
+                // Switch to staff tab and reload
+                bootstrap.Tab.getOrCreateInstance(document.querySelector('#staff-tab')).show();
+                setTimeout(() => location.reload(), 500);
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error adding user: ' + error.message);
+        }
+    }
+
+    // Role Management
+    function openRoleModal(userId, username, currentRoleLevel) {
+        currentUserId = userId;
+        document.getElementById('modalUserName').textContent = username;
+
+        // Set current role in dropdown
+        const roleSelect = document.getElementById('newRole');
+        for (let option of roleSelect.options) {
+            if (ROLES[option.value] === currentRoleLevel) {
+                option.selected = true;
+                break;
+            }
+        }
+
+        new bootstrap.Modal(document.getElementById('roleModal')).show();
+    }
+
+    async function updateUserRole() {
+        if (!currentUserId) return;
+
+        const newRole = document.getElementById('newRole').value;
+
+        try {
+            const response = await fetch('/update-user-role', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: currentUserId,
+                    role: newRole
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('User role updated successfully!');
+                bootstrap.Modal.getInstance(document.getElementById('roleModal')).hide();
+                location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error updating role: ' + error.message);
+        }
+    }
+
+    // Delete User
+    async function deleteUser(userId, username) {
+        if (!confirm(`Are you sure you want to delete user "${username}"? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/delete-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: userId
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('User deleted successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error deleting user: ' + error.message);
+        }
+    }
+
+    // Define ROLES in global scope for the template
+    const ROLES = {
+        'AGENT': 1,
+        'MANAGER': 2,
+        'SYSTEM_ADMIN': 3,
+        'PLATFORM_ADMIN': 4
+    };
+</script>
+{% endblock %}

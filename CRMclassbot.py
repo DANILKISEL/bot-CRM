@@ -178,6 +178,9 @@ class CRMTelegramBot:
 /pricing - Показать прайс-лист
 
 Мы здесь, чтобы помочь вам! Просто отправьте нам сообщение, и мы ответим в ближайшее время.
+
+
+Сделано с помощью [bot-CRM](https://github.com/DANILKISEl/bot-CRM)
             """
 
             # Create general conversation if doesn't exist
@@ -465,6 +468,8 @@ class CRMTelegramBot:
 [https://zefir-it.ru/privacy.html](https://zefir-it.ru/privacy.html)  
 
 Нажимая кнопку ниже, вы подтверждаете согласие с условиями.
+
+Сделано с помощью [bot-CRM](https://github.com/DANILKISEl/bot-CRM)
             """
 
             keyboard = InlineKeyboardMarkup()
@@ -534,6 +539,8 @@ class CRMTelegramBot:
 • Дата заключения: {self.get_current_date()}
 
 Договор вступил в силу. Добро пожаловать в команду!
+
+Сделано с помощью [bot-CRM](https://github.com/DANILKISEl/bot-CRM)
             """
 
             # Save success message

@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - CRM Bot{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <!-- Header -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark">
+            <h1 class="form-h1 mb-0">
+                <i class="fas fa-chart-bar me-2"></i>Admin Dashboard
+            </h1>
+            <p class="text-light mb-0 mt-2">System overview and statistics</p>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h2 class="mb-0">{{ total_users }}</h2>
+                            <p class="mb-0">Total Users</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h2 class="mb-0">{{ total_agents }}</h2>
+                            <p class="mb-0">Staff Members</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-shield fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h2 class="mb-0">{{ open_conversations }}</h2>
+                            <p class="mb-0">Active Conversations</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-comments fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h2 class="mb-0">{{ total_messages }}</h2>
+                            <p class="mb-0">Total Messages</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-envelope fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Users and Quick Actions -->
+    <div class="row">
+        <!-- Recent Users -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-dark">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="fas fa-clock me-2"></i>Recent Telegram Users
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_users %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Username</th>
+                                    <th>Telegram ID</th>
+                                    <th>Joined</th>
+                                    <th>Conversations</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in recent_users %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ user.first_name }} {{ user.last_name or '' }}</strong>
+                                    </td>
+                                    <td>
+                                        {% if user.username %}
+                                        <span class="text-muted">@{{ user.username }}</span>
+                                        {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <code>{{ user.telegram_id }}</code>
+                                    </td>
+                                    <td>
+                                        <small>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">{{ user.conversations|length }}</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">No users found</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-dark">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('user_management') }}" class="btn btn-outline-primary btn-lg">
+                            <i class="fas fa-users me-2"></i>User Management
+                        </a>
+                        <a href="{{ url_for('conversation_management') }}" class="btn btn-outline-success btn-lg">
+                            <i class="fas fa-comments me-2"></i>Conversation Management
+                        </a>
+                        {% if current_user.has_role('PLATFORM_ADMIN') %}
+                        <a href="{{ url_for('debug_users') }}" class="btn btn-outline-info btn-lg">
+                            <i class="fas fa-bug me-2"></i>Debug Users
+                        </a>
+                        <a href="{{ url_for('debug_conversations') }}" class="btn btn-outline-warning btn-lg">
+                            <i class="fas fa-database me-2"></i>Debug Conversations
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Status -->
+            <div class="card mt-4">
+                <div class="card-header bg-dark">
+                    <h5 class="card-title mb-0 text-white">
+                        <i class="fas fa-server me-2"></i>System Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Database</span>
+                            <span class="badge bg-success">Online</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Telegram Bot</span>
+                            <span class="badge bg-success">Running</span>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Web Server</span>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="text-center">
+                        <small class="text-muted" id="current-time-display"></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Update current time display
+    function updateTimeDisplay() {
+        const now = new Date();
+        document.getElementById('current-time-display').textContent =
+            'Last updated: ' + now.toLocaleString();
+    }
+
+    setInterval(updateTimeDisplay, 1000);
+    updateTimeDisplay();
+</script>
+{% endblock %}

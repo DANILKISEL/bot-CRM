@@ -1,47 +1,157 @@
 {% extends "base.html" %}
+
+{% block title %}User Conversations - CRM Bot{% endblock %}
+
 {% block content %}
-<div class="dashboard">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-        <h2>Conversations with {{ telegram_user.first_name }}</h2>
-        <a href="{{ url_for('user_management') }}" class="btn btn-secondary">← Back to User Management</a>
-    </div>
-    <div class="user-info-card" style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-        <h3>User Information</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
-            <div>
-                <strong>Name:</strong> {{ telegram_user.first_name }} {{ telegram_user.last_name or '' }}
-            </div>
-            <div>
-                <strong>Username:</strong> @{{ telegram_user.username or 'N/A' }}
-            </div>
-            <div>
-                <strong>Telegram ID:</strong> {{ telegram_user.telegram_id }}
-            </div>
-            <div>
-                <strong>Joined:</strong> {{ telegram_user.created_at.strftime('%Y-%m-%d %H:%M') }}
+<div class="main-content">
+    <!-- Header -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="form-h1 mb-0">
+                        <i class="fas fa-comments me-2"></i>Conversations with {{ telegram_user.first_name }}
+                    </h1>
+                    <p class="text-light mb-0 mt-2">All conversations for this user</p>
+                </div>
+                <a href="{{ url_for('user_management') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to User Management
+                </a>
             </div>
         </div>
     </div>
-    <div class="conversations-list">
-        {% for conversation in conversations %}
-        <div class="conversation-item">
-            <div class="conversation-header">
-                <h3>Conversation #{{ conversation.id }}</h3>
-                <span class="status-badge status-{{ conversation.status }}">{{ conversation.status }}</span>
+
+    <!-- User Information -->
+    <div class="card mb-4">
+        <div class="card-header bg-info">
+            <h5 class="card-title mb-0 text-white">
+                <i class="fas fa-user me-2"></i>User Information
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Name:</strong><br>
+                    {{ telegram_user.first_name }} {{ telegram_user.last_name or '' }}
+                </div>
+                <div class="col-md-3">
+                    <strong>Username:</strong><br>
+                    {% if telegram_user.username %}
+                    <span class="text-muted">@{{ telegram_user.username }}</span>
+                    {% else %}
+                    <span class="text-muted">Not set</span>
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <strong>Telegram ID:</strong><br>
+                    <code>{{ telegram_user.telegram_id }}</code>
+                </div>
+                <div class="col-md-3">
+                    <strong>Joined:</strong><br>
+                    {{ telegram_user.created_at.strftime('%Y-%m-%d %H:%M') }}
+                </div>
             </div>
-            <p><strong>Started:</strong> {{ conversation.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
-            <p><strong>Last Activity:</strong> {{ conversation.updated_at.strftime('%Y-%m-%d %H:%M') }}</p>
-            <p><strong>Messages:</strong> {{ conversation.messages|length }}</p>
-            {% if conversation.assigned_agent %}
-            <p><strong>Assigned Agent:</strong> {{ conversation.assigned_agent.username }}</p>
+        </div>
+    </div>
+
+    <!-- Conversations -->
+    <div class="card">
+        <div class="card-header bg-dark">
+            <h5 class="card-title mb-0 text-white">
+                <i class="fas fa-comments me-2"></i>Conversations
+                <span class="badge bg-primary ms-2">{{ conversations|length }}</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if conversations %}
+            <div class="row">
+                {% for conversation in conversations %}
+                <div class="col-md-6 mb-4">
+                    <div class="conversation-item">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="mb-0">
+                                {% if conversation.title %}
+                                    {{ conversation.title }}
+                                {% else %}
+                                    Conversation #{{ conversation.id }}
+                                {% endif %}
+                            </h5>
+                            <span class="status-badge status-{{ conversation.status }}">
+                                {{ conversation.status|title }}
+                            </span>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-calendar me-1"></i>
+                                    Started: {{ conversation.created_at.strftime('%Y-%m-%d %H:%M') }}
+                                </small>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock me-1"></i>
+                                    Updated: {{ conversation.updated_at.strftime('%Y-%m-%d %H:%M') }}
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <small class="text-muted">
+                                    <i class="fas fa-envelope me-1"></i>
+                                    Messages: {{ conversation.messages|length }}
+                                </small>
+                            </div>
+                            <div class="col-6">
+                                {% if conversation.assigned_agent %}
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>
+                                    Agent: {{ conversation.assigned_agent.username }}
+                                </small>
+                                {% else %}
+                                <small class="text-muted">
+                                    <i class="fas fa-user me-1"></i>
+                                    Agent: Unassigned
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <a href="{{ url_for('conversation', conversation_id=conversation.id) }}"
+                               class="btn btn-primary">
+                                <i class="fas fa-eye me-2"></i>Open Conversation
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No conversations found</h5>
+                <p class="text-muted">This user hasn't started any conversations yet.</p>
+            </div>
             {% endif %}
-            <a href="{{ url_for('conversation', conversation_id=conversation.id) }}" class="btn btn-primary">Open Conversation</a>
         </div>
-        {% else %}
-        <div class="conversation-item">
-            <p>No conversations found for this user.</p>
-        </div>
-        {% endfor %}
     </div>
 </div>
+
+<style>
+.conversation-item {
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 10px;
+    padding: 20px;
+    height: 100%;
+    transition: all 0.3s ease;
+}
+
+.conversation-item:hover {
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+</style>
 {% endblock %}

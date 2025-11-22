@@ -1,6 +1,8 @@
 import os
 import logging
 from dotenv import load_dotenv
+import logging.config
+
 
 # Load environment variables
 load_dotenv()
@@ -11,6 +13,14 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'sqlite:///crm_bot.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+
+    # Role definitions
+    ROLES = {
+        'AGENT': 1,
+        'MANAGER': 2,
+        'SYSTEM_ADMIN': 3,
+        'PLATFORM_ADMIN': 4
+    }
 
     # Logging configuration
     LOGGING_CONFIG = {
@@ -33,7 +43,7 @@ class Config:
             }
         },
         'root': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'handlers': ['file', 'console']
         }
     }
@@ -41,11 +51,5 @@ class Config:
 
 def setup_logging():
     """Configure application logging"""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        filename='app.log',
-        filemode='a',
-        encoding='utf-8'
-    )
+    logging.config.dictConfig(Config.LOGGING_CONFIG)
     return logging.getLogger("CRM")

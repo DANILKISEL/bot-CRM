@@ -2,6 +2,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from config import Config
 
 db = SQLAlchemy()
 
@@ -11,9 +12,10 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(128), nullable=False)
-    is_agent = db.Column(db.Boolean, default=False)
+    role_level = db.Column(db.Integer, default=Config.ROLES['AGENT'], nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     assigned_conversations = db.relationship('Conversation', backref='assigned_agent', lazy=True)
 
     def set_password(self, password):
@@ -21,6 +23,17 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def has_role(self, role_name):
+        """Check if user has at least the specified role"""
+        return self.role_level >= Config.ROLES[role_name]
+
+    def get_role_name(self):
+        """Get the role name for display"""
+        for role_name, level in Config.ROLES.items():
+            if self.role_level == level:
+                return role_name.replace('_', ' ').title()
+        return "Agent"
 
 class TelegramUser(db.Model):
     __tablename__ = 'telegram_users'
@@ -32,6 +45,7 @@ class TelegramUser(db.Model):
     language_code = db.Column(db.String(10), default='en')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
     conversations = db.relationship('Conversation', backref='telegram_user', lazy=True, cascade='all, delete-orphan')
 
 class Conversation(db.Model):
@@ -44,6 +58,7 @@ class Conversation(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     closed_at = db.Column(db.DateTime, nullable=True)
+
     messages = db.relationship('Message', backref='conversation', lazy=True, cascade='all, delete-orphan')
 
 class Message(db.Model):

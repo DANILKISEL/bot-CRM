@@ -1,0 +1,341 @@
+{% extends "base.html" %}
+
+{% block title %}Conversation Management - CRM Bot{% endblock %}
+
+{% block content %}
+<div class="main-content">
+    <!-- Header -->
+    <div class="card mb-4">
+        <div class="card-header bg-dark">
+            <h1 class="form-h1 mb-0">
+                <i class="fas fa-comments me-2"></i>Conversation Management
+            </h1>
+            <p class="text-light mb-0 mt-2">Manage and assign conversations to agents</p>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h2 class="mb-0">{{ conversations.total }}</h2>
+                            <p class="mb-0">Total Conversations</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-comments fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h2 class="mb-0">{{ open_count }}</h2>
+                            <p class="mb-0">Open</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-envelope-open fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h2 class="mb-0">{{ assigned_count }}</h2>
+                            <p class="mb-0">Assigned</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h2 class="mb-0">{{ closed_count }}</h2>
+                            <p class="mb-0">Closed</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-archive fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <input type="text" class="form-control" placeholder="Search conversations..." id="searchInput">
+                        <button class="btn btn-outline-primary" type="button" id="searchButton">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="btn-group">
+                        <button class="btn btn-outline-primary active" data-filter="all">All</button>
+                        <button class="btn btn-outline-success" data-filter="open">Open</button>
+                        <button class="btn btn-outline-warning" data-filter="assigned">Assigned</button>
+                        <button class="btn btn-outline-secondary" data-filter="closed">Closed</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Conversations List -->
+    <div class="card">
+        <div class="card-header bg-dark">
+            <h5 class="card-title mb-0 text-white">
+                <i class="fas fa-list me-2"></i>Conversations
+                <span class="badge bg-primary ms-2">{{ conversations.total }}</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            {% if conversations.items %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Conversation</th>
+                            <th>User</th>
+                            <th>Status</th>
+                            <th>Assigned To</th>
+                            <th>Messages</th>
+                            <th>Last Activity</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for conversation in conversations.items %}
+                        <tr class="conversation-item" data-status="{{ conversation.status }}">
+                            <td>
+                                <div class="fw-semibold">
+                                    {% if conversation.title %}
+                                        {{ conversation.title }}
+                                    {% else %}
+                                        Conversation #{{ conversation.id }}
+                                    {% endif %}
+                                </div>
+                                <small class="text-muted">ID: {{ conversation.id }}</small>
+                            </td>
+                            <td>
+                                <div class="fw-semibold">{{ conversation.telegram_user.first_name }} {{ conversation.telegram_user.last_name or '' }}</div>
+                                {% if conversation.telegram_user.username %}
+                                <small class="text-muted">@{{ conversation.telegram_user.username }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ conversation.status }}">
+                                    {{ conversation.status|title }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if conversation.assigned_agent %}
+                                <div class="d-flex align-items-center">
+                                    <div class="user-avatar me-2">
+                                        {{ conversation.assigned_agent.username[0]|upper }}
+                                    </div>
+                                    <span>{{ conversation.assigned_agent.username }}</span>
+                                </div>
+                                {% else %}
+                                <span class="text-muted">Unassigned</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ conversation.messages|length }}</span>
+                            </td>
+                            <td>
+                                <small>{{ conversation.updated_at.strftime('%Y-%m-%d %H:%M') }}</small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('conversation', conversation_id=conversation.id) }}" 
+                                       class="btn btn-outline-primary">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if conversation.status != 'closed' %}
+                                    <button type="button" class="btn btn-outline-success dropdown-toggle" 
+                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="fas fa-user-plus"></i>
+                                    </button>
+                                    <ul class="dropdown-menu assignment-dropdown">
+                                        {% for agent in agents %}
+                                        <li>
+                                            <a class="dropdown-item" href="#" 
+                                               onclick="assignConversation({{ conversation.id }}, {{ agent.id }}, '{{ agent.username }}')">
+                                                {{ agent.username }} ({{ agent.get_role_name() }})
+                                            </a>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                    {% if conversation.status == 'assigned' %}
+                                    <button type="button" class="btn btn-outline-warning"
+                                            onclick="closeConversation({{ conversation.id }})">
+                                        <i class="fas fa-archive"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-comments fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No conversations found</h5>
+                <p class="text-muted">When users start conversations with your bot, they will appear here.</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if conversations.pages > 1 %}
+        <div class="card-footer">
+            <nav class="pagination">
+                {% if conversations.has_prev %}
+                <a class="page-link" href="{{ url_for('conversation_management', page=conversations.prev_num) }}">
+                    <i class="fas fa-chevron-left me-2"></i>
+                    Previous
+                </a>
+                {% endif %}
+
+                {% for page_num in conversations.iter_pages(left_edge=1, left_current=1, right_current=1, right_edge=1) %}
+                    {% if page_num %}
+                        <a class="page-link {% if page_num == conversations.page %}active{% endif %}"
+                           href="{{ url_for('conversation_management', page=page_num) }}">
+                            {{ page_num }}
+                        </a>
+                    {% else %}
+                        <span class="page-link disabled">...</span>
+                    {% endif %}
+                {% endfor %}
+
+                {% if conversations.has_next %}
+                <a class="page-link" href="{{ url_for('conversation_management', page=conversations.next_num) }}">
+                    Next
+                    <i class="fas fa-chevron-right ms-2"></i>
+                </a>
+                {% endif %}
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    // Filter conversations by status
+    document.querySelectorAll('[data-filter]').forEach(button => {
+        button.addEventListener('click', function() {
+            const filter = this.getAttribute('data-filter');
+            
+            // Update active button
+            document.querySelectorAll('[data-filter]').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            this.classList.add('active');
+            
+            // Filter rows
+            document.querySelectorAll('.conversation-item').forEach(row => {
+                if (filter === 'all' || row.getAttribute('data-status') === filter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    });
+
+    // Search functionality
+    document.getElementById('searchInput').addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+        document.querySelectorAll('.conversation-item').forEach(row => {
+            const text = row.textContent.toLowerCase();
+            if (text.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+
+    // Assign conversation to agent
+    async function assignConversation(conversationId, agentId, agentName) {
+        if (!confirm(`Assign this conversation to ${agentName}?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/assign-conversation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    conversation_id: conversationId,
+                    agent_id: agentId
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Conversation assigned successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error assigning conversation: ' + error.message);
+        }
+    }
+
+    // Close conversation
+    async function closeConversation(conversationId) {
+        if (!confirm('Are you sure you want to close this conversation?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/close-conversation/${conversationId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Conversation closed successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error closing conversation: ' + error.message);
+        }
+    }
+</script>
+{% endblock %}

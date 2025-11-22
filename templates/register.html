@@ -1,33 +1,95 @@
 {% extends "base.html" %}
+
+{% block title %}Register - CRM Bot{% endblock %}
+
 {% block content %}
-<div class="auth-container">
-    <div class="auth-form">
-        <h2 class="form-h1">Register</h2>
-        {% if error %}
-        <div class="alert alert-error">
-            {{ error }}
+<div class="main-content">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-dark">
+                    <h1 class="form-h1 mb-0 text-white text-center">
+                        <i class="fas fa-user-plus me-2"></i>Register New User
+                    </h1>
+                </div>
+                <div class="card-body p-4">
+                    {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="{{ url_for('register') }}">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-user"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="username" name="username" required
+                                           placeholder="Choose a username">
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-envelope"></i>
+                                    </span>
+                                    <input type="email" class="form-control" id="email" name="email" required
+                                           placeholder="Enter your email">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">`
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input type="password" class="form-control" id="password" name="password" required
+                                       placeholder="Create a password">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="role" class="form-label">Role</label>
+                            <select class="form-select" id="role" name="role" required>
+                                <option value="">Select a role</option>
+                                {% for role_name, role_level in roles.items() %}
+                                <option value="{{ role_name }}">{{ role_name.replace('_', ' ').title() }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                <small>
+                                    <strong>Agent:</strong> Can access assigned conversations only<br>
+                                    <strong>Manager:</strong> Can access all conversations and assign chats<br>
+                                    <strong>System Admin:</strong> Can access admin dashboard and user management<br>
+                                    <strong>Platform Admin:</strong> Full system access
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-user-plus me-2"></i>Register
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Login
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
-        {% endif %}
-        <form method="POST">
-            <div class="form-group">
-                <label class="form-group-label" for="username">Username:</label class="form-group-label">
-                <input class="form-group-input" type="text" id="username" name="username" required>
-            </div>
-            <div class="form-group">
-                <label class="form-group-label" for="email">Email:</label class="form-group-label">
-                <input class="form-group-input" type="email" id="email" name="email" required>
-            </div>
-            <div class="form-group">
-                <label class="form-group-label" for="password">Password:</label class="form-group-label">
-                <input class="form-group-input" type="password" id="password" name="password" required>
-            </div>
-            <div class="form-group">
-                    <input class="form-group" type="checkbox" name="is_agent" id="is_agent" value="1">
-                    <label class="form-group" for="is_agent">Register as agent</label class="form-group-label">
-            </div>
-            <button type="submit" class="btn btn-primary">Register</button>
-        </form>
-        <p class="form-text">Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
     </div>
 </div>
 {% endblock %}

@@ -1,141 +1,196 @@
-import os
-import sys
-import time
-import signal
-import threading
-import subprocess
 from flask import jsonify, request
 from flask_login import login_required, current_user
-from utils.system_monitor import SystemMonitor
-from utils.helpers import update_env_file
-
-system_monitor = SystemMonitor()
+from models import Conversation, TelegramUser, Message
+from utils.decorators import role_required
+from config import Config
 
 def init_api_routes(app):
-    @app.route('/api/status')
+    @app.route('/api/conversations')
     @login_required
-    def api_status():
-        """API endpoint for system status monitoring"""
-        if not current_user.is_agent:
-            return jsonify({'error': 'Access denied'}), 403
+    @role_required(Config.ROLES['MANAGER'])
+    def api_conversations():
         try:
-            status_data = system_monitor.get_system_status()
-            if 'error' in status_data:
-                return jsonify({'error': status_data['error']}), 500
-            return jsonify(status_data)
-        except Exception as e:
-            app.logger.error(f"Error in status endpoint: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            page = request.args.get('page', 1, type=int)
+            per_page = request.args.get('per_page', 10, type=int)
+            status_filter = request.args.get('status', 'all')
+            agent_filter = request.args.get('agent', 'all')
+            search_query = request.args.get('search', '')
+            sort_by = request.args.get('sort', 'updated_desc')
 
-    @app.route('/api/environment', methods=['GET', 'POST'])
-    @login_required
-    def api_environment():
-        """Get or update environment variables"""
-        if not current_user.is_agent:
-            return jsonify({'error': 'Access denied'}), 403
-        if request.method == 'GET':
-            env_vars = {
-                'DATABASE_URL': os.getenv('DATABASE_URL', 'sqlite:///crm_bot.db'),
-                'FLASK_ENV': os.getenv('FLASK_ENV', 'production'),
-                'TELEGRAM_BOT_TOKEN': '***' + os.getenv('TELEGRAM_BOT_TOKEN', '')[-4:] if os.getenv(
-                    'TELEGRAM_BOT_TOKEN') else None,
-                'SECRET_KEY': '***' + os.getenv('SECRET_KEY', '')[-4:] if os.getenv('SECRET_KEY') else None,
-            }
-            return jsonify(env_vars)
-        elif request.method == 'POST':
-            try:
-                data = request.json
-                updates = {}
-                allowed_vars = ['DATABASE_URL', 'FLASK_ENV']
-                for key, value in data.items():
-                    if key in allowed_vars:
-                        updates[key] = value
-                if updates:
-                    update_env_file(updates)
-                    app.logger.warning(f"Environment variables updated by {current_user.username}: {list(updates.keys())}")
-                    return jsonify({'success': True, 'message': 'Environment variables updated. Restart required.'})
-                else:
-                    return jsonify({'error': 'No valid environment variables to update'}), 400
-            except Exception as e:
-                app.logger.error(f"Error updating environment: {str(e)}")
-                return jsonify({'error': str(e)}), 500
+            query = Conversation.query
 
-    @app.route('/api/restart', methods=['POST'])
-    @login_required
-    def api_restart():
-        """Restart the application"""
-        if not current_user.is_agent:
-            return jsonify({'error': 'Access denied'}), 403
+            if status_filter != 'all':
+                query = query.filter(Conversation.status == status_filter)
 
-        try:
-            app.logger.debug(f"Restart initiated by {current_user.username}")
-            print("Restarting ...")
+            if agent_filter != 'all':
+                query = query.filter(Conversation.assigned_agent_id == agent_filter)
 
-            def restart_app():
-                time.sleep(2)
-                try:
-                    python = sys.executable
-                    os.execv(python, [python] + sys.argv)
-                except Exception as e:
-                    print(f"execv failed: {e}, trying subprocess method")
-                    try:
-                        python = sys.executable
-                        script_path = os.path.abspath(sys.argv[0])
-                        env = os.environ.copy()
-                        process = subprocess.Popen(
-                            [python, script_path],
-                            env=env,
-                            cwd=os.getcwd()
-                        )
-                        print(f"New process started with PID: {process.pid}")
-                        os._exit(0)
-                    except Exception as e2:
-                        print(f"Subprocess method also failed: {e2}")
-                        os._exit(1)
+            if search_query:
+                query = query.join(TelegramUser).filter(
+                    (TelegramUser.first_name.ilike(f'%{search_query}%')) |
+                    (TelegramUser.last_name.ilike(f'%{search_query}%')) |
+                    (TelegramUser.username.ilike(f'%{search_query}%')) |
+                    (Conversation.title.ilike(f'%{search_query}%'))
+                )
 
-            restart_thread = threading.Thread(target=restart_app)
-            restart_thread.start()
+            if sort_by == 'updated_asc':
+                query = query.order_by(Conversation.updated_at.asc())
+            elif sort_by == 'created_desc':
+                query = query.order_by(Conversation.created_at.desc())
+            else:
+                query = query.order_by(Conversation.updated_at.desc())
+
+            pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+            conversations = pagination.items
+
+            conversations_data = []
+            for conv in conversations:
+                conversations_data.append({
+                    'id': conv.id,
+                    'title': conv.title,
+                    'status': conv.status,
+                    'created_at': conv.created_at.isoformat(),
+                    'updated_at': conv.updated_at.isoformat(),
+                    'telegram_user': {
+                        'id': conv.telegram_user.id,
+                        'first_name': conv.telegram_user.first_name,
+                        'last_name': conv.telegram_user.last_name,
+                        'username': conv.telegram_user.username
+                    },
+                    'assigned_agent': {
+                        'id': conv.assigned_agent.id,
+                        'username': conv.assigned_agent.username,
+                        'role': conv.assigned_agent.get_role_name()
+                    } if conv.assigned_agent else None,
+                    'message_count': len(conv.messages)
+                })
+
+            total = Conversation.query.count()
+            open_count = Conversation.query.filter_by(status='open').count()
+            assigned_count = Conversation.query.filter_by(status='assigned').count()
+            closed_count = Conversation.query.filter_by(status='closed').count()
 
             return jsonify({
-                'success': True,
-                'message': 'Restart initiated. System will restart shortly.'
+                'conversations': conversations_data,
+                'pagination': {
+                    'page': page,
+                    'pages': pagination.pages,
+                    'total': pagination.total,
+                    'start': (page - 1) * per_page + 1,
+                    'end': min(page * per_page, pagination.total)
+                },
+                'stats': {
+                    'total': total,
+                    'open': open_count,
+                    'assigned': assigned_count,
+                    'closed': closed_count
+                }
             })
 
         except Exception as e:
-            app.logger.error(f"Error during restart: {str(e)}")
-            return jsonify({'error': str(e)}), 500
+            app.logger.error(f"Error in api_conversations: {str(e)}")
+            return jsonify({'error': 'Failed to load conversations'}), 500
 
-    @app.route('/api/shutdown', methods=['POST'])
+    @app.route('/debug/users')
+    def debug_users():
+        users = User.query.all()
+        users_data = []
+        for user in users:
+            users_data.append({
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'role_level': user.role_level,
+                'password_hash': user.password_hash[:20] + '...' if user.password_hash else None
+            })
+
+        return jsonify({
+            'total_users': len(users),
+            'users': users_data
+        })
+
+    @app.route('/debug/conversations')
     @login_required
-    def api_shutdown():
-        """Shutdown the application"""
-        if not current_user.is_agent:
-            return jsonify({'error': 'Access denied'}), 403
+    @role_required(Config.ROLES['SYSTEM_ADMIN'])
+    def debug_conversations():
+        conversations = Conversation.query.all()
+        conversation_data = []
 
+        for conv in conversations:
+            conversation_data.append({
+                'id': conv.id,
+                'telegram_user_id': conv.telegram_user_id,
+                'status': conv.status,
+                'title': conv.title,
+                'assigned_agent_id': conv.assigned_agent_id,
+                'created_at': conv.created_at.isoformat() if conv.created_at else None,
+                'telegram_user': {
+                    'id': conv.telegram_user.id if conv.telegram_user else None,
+                    'first_name': conv.telegram_user.first_name if conv.telegram_user else None,
+                    'last_name': conv.telegram_user.last_name if conv.telegram_user else None
+                } if conv.telegram_user else None,
+                'message_count': len(conv.messages)
+            })
+
+        return jsonify({
+            'total_conversations': len(conversations),
+            'conversations': conversation_data
+        })
+
+    @app.route('/test/create-sample')
+    def create_sample_data():
         try:
-            app.logger.debug(f"Shutdown initiated by {current_user.username}")
-            print("Shutting down...")
+            test_user = TelegramUser.query.filter_by(telegram_id=123456789).first()
+            if not test_user:
+                test_user = TelegramUser(
+                    telegram_id=123456789,
+                    username='testuser',
+                    first_name='Test',
+                    last_name='User'
+                )
+                from models import db
+                db.session.add(test_user)
+                db.session.commit()
 
-            def delayed_shutdown():
-                time.sleep(2)
-                os.kill(os.getpid(), signal.SIGINT)
+            conversation = Conversation(
+                telegram_user_id=test_user.id,
+                title='Test Conversation',
+                status='open'
+            )
+            from models import db
+            db.session.add(conversation)
 
-            shutdown_thread = threading.Thread(target=delayed_shutdown, daemon=True)
-            shutdown_thread.start()
+            messages = [
+                Message(
+                    conversation_id=conversation.id,
+                    sender_type='user',
+                    sender_id=test_user.id,
+                    content='Hello, this is a test message from user'
+                ),
+                Message(
+                    conversation_id=conversation.id,
+                    sender_type='ai',
+                    sender_id=None,
+                    content='Hello! This is an AI response',
+                    is_ai_response=True
+                )
+            ]
+
+            for msg in messages:
+                from models import db
+                db.session.add(msg)
+
+            from models import db
+            db.session.commit()
 
             return jsonify({
                 'success': True,
-                'message': 'Shutdown initiated. System will stop shortly.'
+                'message': 'Sample data created',
+                'conversation_id': conversation.id
             })
 
         except Exception as e:
-            app.logger.error(f"Error during shutdown: {str(e)}")
-            return jsonify({'error': str(e)}), 500
-
-    @app.route('/system-monitor')
-    @login_required
-    def system_monitor():
-        """System monitoring dashboard"""
-        if not current_user.is_agent:
-            return render_template("error.html", error='Access denied'), 403
-        return render_template("system-monitor.html")
+            app.logger.error(f"Error creating sample data: {str(e)}")
+            from models import db
+            db.session.rollback()
+            return jsonify({'success': False, 'error': str(e)})

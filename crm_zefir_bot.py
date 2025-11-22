@@ -275,7 +275,7 @@ def admin_dashboard():
     total_messages = Message.query.count()
     recent_users = TelegramUser.query.order_by(TelegramUser.created_at.desc()).limit(6).all()
     return render_template(
-        "admin-dash.html",
+        "admin_dashboard.html",
         total_users=total_users,
         total_agents=total_agents,
         open_conversations=open_conversations,

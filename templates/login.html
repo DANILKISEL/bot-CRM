@@ -1,25 +1,72 @@
 {% extends "base.html" %}
+
+{% block title %}Login - CRM Bot{% endblock %}
+
 {% block content %}
-<div class="auth-container">
-    <div class="auth-form">
-        <h2 class="form-h2" > Login</h2>
-        {% if error %}
-        <div class="alert alert-error">
-            {{ error }}
+<div class="main-content">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header bg-dark">
+                    <h1 class="form-h1 mb-0 text-white text-center">
+                        <i class="fas fa-robot me-2"></i>CRM Bot Login
+                    </h1>
+                </div>
+                <div class="card-body p-4">
+                    {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-circle me-2"></i>{{ error }}
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="{{ url_for('login') }}">
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                                <input type="text" class="form-control" id="username" name="username" required
+                                       placeholder="Enter your username">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Password</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-lock"></i>
+                                </span>
+                                <input type="password" class="form-control" id="password" name="password" required
+                                       placeholder="Enter your password">
+                            </div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-sign-in-alt me-2"></i>Login
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <div class="text-center">
+                        <small class="text-muted">
+                            Default admin credentials:<br>
+                            <strong>Username:</strong> admin<br>
+                            <strong>Password:</strong> admin123
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center mt-3">
+                <small class="text-muted">
+                    &copy; 2024 CRM Telegram Bot. All rights reserved.
+                </small>
+            </div>
         </div>
-        {% endif %}
-        <form method="POST">
-            <div class="form-group">
-                <label class="form-group-label" for="username">Username:</label class="form-group-label">
-                <input class="form-group-input" type="text" id="username" name="username" required>
-            </div>
-            <div class="form-group">
-                <label class="form-group-label" for="password">Password:</label class="form-group-label">
-                <input class="form-group-input" type="password" id="password" name="password" required>
-            </div>
-            <button type="submit" class="btn btn-primary">Login</button>
-        </form>
-        <p class="form-text">Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
     </div>
 </div>
 {% endblock %}
