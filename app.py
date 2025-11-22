@@ -14,6 +14,7 @@ from flask_login import LoginManager
 from config import Config, setup_logging
 from models import db, User, TelegramUser, Conversation, Message
 from routes import init_all_routes
+from utils import ip_adress as ipAd
 
 
 # Disable Flask CLI banner
@@ -85,25 +86,53 @@ def init_db():
             db.session.rollback()
 
 def run_flask():
-    app.run(debug=False, port=80, use_reloader=False, host='0.0.0.0')
+    """Run Flask app on port 2000"""
+    try:
+        print(Fore.GREEN + f"🌐 Starting Flask server on port 2000..." + Fore.RESET)
+        app.run(debug=False, port=2000, use_reloader=False, host='0.0.0.0')
+    except Exception as e:
+        logger.error(f"❌ Failed to start Flask: {e}")
+        # Try alternative port if 2000 is busy
+        try:
+            print(Fore.YELLOW + "🔄 Trying alternative port 2001..." + Fore.RESET)
+            app.run(debug=False, port=2001, use_reloader=False, host='0.0.0.0')
+        except Exception as e2:
+            logger.error(f"❌ Failed to start on port 2001: {e2}")
+def print_user_data_console():
+    print(Fore.CYAN + """
+       _____           _              _                 _ _               _   
+     / ____|         | |            | |               | | |             | |  
+    | |  __  ___     | |_ ___       | | ___   ___ __ _| | |__   ___  ___| |_ 
+    | | |_ |/ _ \    | __/ _ \      | |/ _ \ / __/ _` | | '_ \ / _ \/ __| __|
+    | |__| | (_) |   | || (_) |     | | (_) | (_| (_| | | | | | (_) \__ \ |_ 
+     \_____|\___/     \__\___/      |_|\___/ \___\__,_|_|_| |_|\___/|___/\__|
+       """ + Fore.RESET)
+
+    print(Fore.CYAN + "✅ Flask app running at http://localhost:2000")
+    print("   ✅ Admin Dashboard available at http://localhost:2000/admin")
+    print("   ✅ User Management available at http://localhost:2000/user-management")
+    print("   ✅ Conversation Management available at http://localhost:2000/conversation-management")
+    print(Fore.MAGENTA)
+    print(" 🔐 Default Admin Login:")
+    print("    Username: admin")
+    print("    Password: admin123")
+    print(Fore.GREEN)
+    print(" 🐛 Debug Routes:")
+    print("    http://localhost:2000/debug/users - Check all users")
+    print("    http://localhost:2000/debug/conversations - Check all conversations")
+    print(Fore.RESET)
+
 
 def main():
     # Generate ASCII art banner
     banner = figlet_format("< <   C R M   B O T  > > ", font="big")
     print(Fore.CYAN + banner + Fore.RESET)
 
-    print(Fore.CYAN + """
-    _____           _              _                 _ _               _   
-  / ____|         | |            | |               | | |             | |  
- | |  __  ___     | |_ ___       | | ___   ___ __ _| | |__   ___  ___| |_ 
- | | |_ |/ _ \    | __/ _ \      | |/ _ \ / __/ _` | | '_ \ / _ \/ __| __|
- | |__| | (_) |   | || (_) |     | | (_) | (_| (_| | | | | | (_) \__ \ |_ 
-  \_____|\___/     \__\___/      |_|\___/ \___\__,_|_|_| |_|\___/|___/\__|
-    """ + Fore.RESET)
-
     logging.getLogger('werkzeug').disabled = False
     logging.getLogger('CRM').disabled = False
     print(Fore.GREEN + "🚀 Starting CRM Bot System..." + Fore.RESET)
+
+    print_user_data_console()
 
     # Initialize database
     init_db()
@@ -112,19 +141,6 @@ def main():
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
 
-    print(Fore.CYAN + "✅ Flask app running at http://localhost:80")
-    print(" ✅ Admin Dashboard available at http://localhost:80/admin")
-    print(" ✅ User Management available at http://localhost:80/user-management")
-    print(" ✅ Conversation Management available at http://localhost:80/conversation-management")
-    print("")
-    print(" 🔐 Default Admin Login:")
-    print("    Username: admin")
-    print("    Password: admin123")
-    print("")
-    print(" 🐛 Debug Routes:")
-    print("    http://localhost:80/debug/users - Check all users")
-    print("    http://localhost:80/debug/conversations - Check all conversations")
-    print(Fore.RESET)
 
     # Start the single bot
     logger.info("Starting CRM Telegram Bot...")
@@ -140,7 +156,7 @@ def main():
     logger.info("\nPress Ctrl+C to stop")
 
     # Show external IP
-    ip = 0 #get_ip()
+    ip = ipAd.get_ip()
     if ip:
         print(Fore.YELLOW + f"🌐 External Access: http://{ip}:80" + Fore.RESET)
     else:
