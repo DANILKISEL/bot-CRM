@@ -125,7 +125,7 @@ def print_user_data_console():
 
 def main():
     # Generate ASCII art banner
-    banner = figlet_format("< <   C R M   B O T  > > ", font="big")
+    banner = figlet_format("< < C R M   B O T > > ", font="big")
     print(Fore.CYAN + banner + Fore.RESET)
 
     logging.getLogger('werkzeug').disabled = False

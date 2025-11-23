@@ -7,6 +7,7 @@ A comprehensive Customer Relationship Management (CRM) system built with Flask a
 ![Python](https://img.shields.io/badge/python-3.8%2B-green)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS-blue)
 
+
 ## 🌟 Features
 
 ### 🤖 Telegram Bot Integration

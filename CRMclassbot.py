@@ -180,7 +180,7 @@ class CRMTelegramBot:
 Мы здесь, чтобы помочь вам! Просто отправьте нам сообщение, и мы ответим в ближайшее время.
 
 
-Сделано с помощью [bot-CRM](https://github.com/DANILKISEl/bot-CRM)
+Сделано с помощью https://github.com/DANILKISEl/bot-CRM
             """
 
             # Create general conversation if doesn't exist
@@ -302,13 +302,16 @@ class CRMTelegramBot:
 💡 *Цены являются ориентировочными. Точная стоимость рассчитывается индивидуально под каждый проект.*
 
 Для обсуждения вашего проекта или получения консультации, просто напишите нам сообщение!
+
+
+*Сделано с помощью [bot-CRM](https://github.com/DANILKISEl/bot-CRM)*
             """
 
             # Save pricing message to conversation
             if conversation:
                 self.save_message(conversation, pricing_text, sender_type="bot", is_ai_response=True)
 
-            # Send without keyboard (remove buttons)
+            # Send without keyboard
             self.bot.reply_to(
                 message,
                 pricing_text,
@@ -370,8 +373,8 @@ class CRMTelegramBot:
             self.save_message(conversation, message.text, sender_type="user")
 
             # Generate AI response
-            ai_response = self.generate_ai_response(message.text, conversation.id)
-
+            # ai_response = self.generate_ai_response(message.text, conversation.id)
+            ai_response = ""
             if ai_response:
                 # Save AI response
                 self.save_message(conversation, ai_response, sender_type="ai", is_ai_response=True)
@@ -435,6 +438,8 @@ class CRMTelegramBot:
             next_step_text = """
 Теперь введите серию и номер вашего паспорта (через пробел):
 Например: `4510 123456`
+
+*Сделано с помощью [bot-CRM](https://github.com/DANILKISEl/bot-CRM)*
             """
 
             self.save_message(conversation, next_step_text, sender_type="bot", is_ai_response=True)
@@ -469,7 +474,8 @@ class CRMTelegramBot:
 
 Нажимая кнопку ниже, вы подтверждаете согласие с условиями.
 
-Сделано с помощью [bot-CRM](https://github.com/DANILKISEl/bot-CRM)
+*Сделано с помощью [bot-CRM](https://github.com/DANILKISEl/bot-CRM)*
+
             """
 
             keyboard = InlineKeyboardMarkup()
@@ -531,7 +537,7 @@ class CRMTelegramBot:
 
 ✅ **Договор успешно заключён.**
 
-С уважением, команда Zeffr 🚀
+С уважением, команда Zefir 🚀
 
 **Ваши данные:**
 • ФИО: {full_name}
@@ -540,7 +546,8 @@ class CRMTelegramBot:
 
 Договор вступил в силу. Добро пожаловать в команду!
 
-Сделано с помощью [bot-CRM](https://github.com/DANILKISEl/bot-CRM)
+*Сделано с помощью [bot-CRM](https://github.com/DANILKISEl/bot-CRM)*
+
             """
 
             # Save success message
