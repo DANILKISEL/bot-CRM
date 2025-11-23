@@ -79,9 +79,13 @@ jobs:
         Copy-Item "templates" "dist_src/" -Recurse -Force
         Copy-Item "static" "dist_src/" -Recurse -Force
 
+    - name: Find pyfiglet fonts path
+      run: |
+        python -c "import pyfiglet; import os; print('Pyfiglet path:', pyfiglet.__file__); print('Fonts directory:', os.path.join(os.path.dirname(pyfiglet.__file__), 'fonts'))"
+
     - name: Build EXE
       run: |
-        pyinstaller --onefile --console --name CRMTelegramBot --add-data "dist_src\app.py;." --add-data "dist_src\config.py;." --add-data "dist_src\models.py;." --add-data "dist_src\routes;routes" --add-data "dist_src\utils;utils" --add-data "dist_src\templates;templates" --add-data "dist_src\static;static" --add-data "dist_src\.env;." --add-data "dist_src\CRMclassbot.py;." --hidden-import=flask --hidden-import=flask_sqlalchemy --hidden-import=flask_login --hidden-import=telebot --hidden-import=python_dotenv --hidden-import=sqlalchemy --hidden-import=engineio --hidden-import=jinja2 --hidden-import=werkzeug --collect-all=werkzeug windows_launcher.py
+        pyinstaller --onefile --console --name CRMTelegramBot --add-data "dist_src\app.py;." --add-data "dist_src\config.py;." --add-data "dist_src\models.py;." --add-data "dist_src\routes;routes" --add-data "dist_src\utils;utils" --add-data "dist_src\templates;templates" --add-data "dist_src\static;static" --add-data "dist_src\.env;." --add-data "dist_src\CRMclassbot.py;." --add-data "$(python -c 'import pyfiglet; import os; print(os.path.join(os.path.dirname(pyfiglet.__file__), \"fonts\"))');pyfiglet/fonts" --hidden-import=flask --hidden-import=flask_sqlalchemy --hidden-import=flask_login --hidden-import=telebot --hidden-import=python_dotenv --hidden-import=sqlalchemy --hidden-import=engineio --hidden-import=jinja2 --hidden-import=werkzeug --collect-all=werkzeug --collect-all=pyfiglet windows_launcher.py
 
     - name: Create Release and Upload EXE
       if: startsWith(github.ref, 'refs/tags/v')
